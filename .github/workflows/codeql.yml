@@ -1,0 +1,58 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'Maple/**/*.swift'
+      - 'Maple.xcodeproj/**'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'Maple/**/*.swift'
+      - 'Maple.xcodeproj/**'
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  analyze:
+    name: Analyze (Swift)
+    runs-on: macos-15
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: swift
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project Maple.xcodeproj \
+            -scheme Maple \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:swift"

@@ -1,0 +1,59 @@
+included:
+  - Maple
+
+excluded:
+  - MapleTests
+  - MapleUITests
+  - build
+  - DerivedData
+  - .build
+
+disabled_rules:
+  - trailing_comma
+  - todo
+  - multiple_closures_with_trailing_closure
+  # The project uses SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor; explicit
+  # `nonisolated init` on model structs is required for Sendable conformance,
+  # so the synthesized-init lint is a false positive here.
+  - unneeded_synthesized_initializer
+
+opt_in_rules:
+  - empty_count
+  - explicit_init
+  - first_where
+  - force_unwrapping
+  - redundant_nil_coalescing
+  - sorted_first_last
+  - unused_import
+
+line_length:
+  warning: 140
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+type_body_length:
+  warning: 400
+  error: 600
+
+function_body_length:
+  warning: 80
+  error: 150
+
+file_length:
+  warning: 500
+  error: 800
+  ignore_comment_only_lines: true
+
+identifier_name:
+  min_length:
+    warning: 2
+  excluded:
+    - id
+    - x
+    - y
+    - fd
+
+nesting:
+  type_level:
+    warning: 3
