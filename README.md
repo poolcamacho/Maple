@@ -1,3 +1,5 @@
+<div align="center">
+
 # Maple
 
 [![CI](https://github.com/poolcamacho/Maple/actions/workflows/ci.yml/badge.svg)](https://github.com/poolcamacho/Maple/actions/workflows/ci.yml)
@@ -8,79 +10,41 @@
 
 A **free, fast, native** macOS Git client built with SwiftUI. Inspired by [GitExtensions](https://gitextensions.github.io/), designed to feel at home on macOS.
 
-## Why
+![Maple History tab with commit graph and diff](docs/screenshots/commit-graph.png)
 
-Most Git GUIs on macOS are either Electron-based, subscription-locked, or try to oversimplify Git. Maple aims to be a **free, fast, native** alternative that respects the full power of Git without hiding it behind abstractions.
+</div>
 
-## Goals
+## Why Maple
 
-- **Native macOS experience** — built entirely in SwiftUI, no web views, no Electron
-- **Full Git visibility** — commit graph, diff viewer, staging area, branch management, all in one window
-- **Responsive layout** — adapts from wide desktop monitors to compact laptop windows without losing panels
-- **Power-user friendly** — expose the operations that matter: interactive staging, stash, rebase, merge, cherry-pick
-- **Fast** — talk directly to `git` CLI, no intermediate layers or daemons
+Most Git GUIs on macOS are Electron based, locked behind a subscription, or oversimplified to the point of hiding what Git actually does. Maple is none of those. It shells out to the `git` binary you already have, shows the full topology of your history, and stays out of the way when you know what you are doing.
 
-## Current State
+## Features
 
-Maple is a functional Git client that talks directly to the `git` CLI via `Process`:
+- **Real commit graph.** Lane assignment, curved edges per parent, merge nodes rendered as a ring so joins stay legible across busy histories.
+- **Diff viewer with Blame toggle.** Syntax coloured hunks, line numbers, and per line author / hash / date when Blame is on.
+- **Merge and rebase with conflict UX.** Detects `UU`, `AA`, `DD` automatically, shows an operation banner with Abort / Continue / Skip, and lets you resolve per file with Use Ours or Use Theirs.
+- **Branch management.** Local and remote branches, checkout (including remote to local tracking), create, rename, delete.
+- **Stash support.** Save, pop, apply, drop with custom messages.
+- **Auto refresh.** FSEvents watcher on `.git/` picks up changes made outside the app.
+- **Adaptive layout.** The toolbar, sidebar, and panels collapse gracefully from a wide desktop down to a compact laptop window.
 
-- **Open any local repo** via folder picker, with git validation
-- **Sidebar** with repository list, local/remote branches, refresh button
-- **Toolbar** with Pull, Push, Fetch, Stash, Branch actions + search field
-- **Four main tabs**:
-  - **Changes** — real `git status` with staged/unstaged files, per-file stage/unstage via `git add`/`git reset`, commit with message editor
-  - **History** — real `git log --all` with graph nodes, branch tags, author, date, SHA. Select a commit to see its diff below
-  - **Branches** — local and remote branches, checkout (including remote → local tracking), create, delete via context menu or detail panel
-  - **Stashes** — `git stash list` with apply, pop, drop actions per entry
-- **Diff viewer** — real `git diff` output parsed with line numbers, addition/deletion coloring, hunk headers
-- **Auto-refresh** — FSEvents watcher on `.git/` triggers automatic UI refresh on external changes
-- **Adaptive layout** — toolbar, columns, and panels collapse gracefully at smaller window sizes
+## Screenshots
 
-### Architecture
+### Merge conflict resolution
 
-```
-Models/     — Pure data (AppState, GitModels, StashModels)
-Services/   — GitService (CLI execution), GitCoordinator (orchestration),
-              GitCommands/BranchOps/StashOps (extensions), FileWatcher
-Views/      — One file per view, no business logic
-Utils/      — FolderPicker, DateExtensions
-```
+![Merge conflict view with operation banner and per file Use Ours / Use Theirs](docs/screenshots/conflict-resolution.png)
 
-## Roadmap
+### Branch management
 
-### Done
-
-- [x] Git CLI integration via `Process`
-- [x] Repository open with validation
-- [x] Live `git status` / `git log` / `git diff` parsing
-- [x] Commit, push, pull, fetch operations
-- [x] Branch create, checkout, delete, rename
-- [x] Stash management (save, pop, apply, drop)
-- [x] Auto-refresh via FSEvents
-- [x] Responsive layout with adaptive breakpoints
-- [x] Separated architecture (Models / Services / Views / Utils)
-- [x] Blame view (toggle in Changes tab, shows author/hash/date per line)
-- [x] Commit graph with real branch topology (lane assignment, curved edges per parent)
-- [x] Merge and rebase with conflict resolution UI (operation banner, abort/continue, per-file use ours/theirs)
-
-### Next
-
-- [ ] Interactive staging (stage individual hunks/lines)
-- [ ] Tag management (create, list, delete)
-- [ ] Search filtering (commits, files)
-- [ ] Clone from URL
-- [ ] Remote management (add, remove, configure)
-- [ ] Keyboard shortcuts (Cmd+S stage, Cmd+Enter commit, etc.)
-- [ ] Persist open repositories between sessions
-- [ ] Settings and preferences
+![Branches tab with local and remote branches](docs/screenshots/branches.png)
 
 ## Requirements
 
 - macOS 14.0+ (Apple Silicon recommended, Intel supported)
-- Xcode 15+
+- Xcode 16+
 - Git installed (ships with Xcode Command Line Tools)
 
-## Build
+## Getting started
 
 ```bash
 git clone https://github.com/poolcamacho/Maple.git
@@ -88,15 +52,55 @@ cd Maple
 open Maple.xcodeproj
 ```
 
-Build and run from Xcode (Cmd+R).
+Build and run from Xcode with `Cmd+R`.
+
+## Architecture
+
+```
+Models/     Pure Sendable data (AppState, GitModels, StashModels)
+Services/   GitService (actor, runs git via Process),
+            GitCoordinator (@MainActor, orchestration),
+            command extensions, CommitGraphBuilder,
+            ConflictParser, FileWatcher
+Views/      One file per view, all async work through the coordinator
+Utils/      FolderPicker, DateExtensions
+```
+
+## Roadmap
+
+### Done
+
+- [x] Direct integration with the `git` binary via `Process`, with hardened stdin and pipe cleanup
+- [x] Live `git status`, `git log`, `git diff` parsing
+- [x] Commit, push, pull, fetch
+- [x] Branch create, checkout, delete, rename
+- [x] Stash save, pop, apply, drop
+- [x] Auto refresh via FSEvents
+- [x] Responsive layout with adaptive breakpoints
+- [x] Separated architecture (Models / Services / Views / Utils)
+- [x] Blame view with per line author, hash, date
+- [x] Commit graph with real branch topology
+- [x] Merge and rebase with conflict resolution UI
+
+### Next
+
+- [ ] Interactive staging (stage individual hunks and lines)
+- [ ] Tag management (create, list, delete)
+- [ ] Search filtering (commits, files)
+- [ ] Clone from URL
+- [ ] Remote management (add, remove, configure)
+- [ ] Keyboard shortcuts (`Cmd+S` stage, `Cmd+Enter` commit, command palette)
+- [ ] Persist open repositories between sessions
+- [ ] Settings and preferences
+- [ ] Signed and notarized releases
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations. Report security issues via the process in [SECURITY.md](SECURITY.md).
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations. Security issues go through the private flow in [SECURITY.md](SECURITY.md).
 
 ## Sponsor
 
-Maple is developed in the open on nights and weekends. If it saves you time, consider [sponsoring on GitHub](https://github.com/sponsors/poolcamacho) — it keeps the project free and actively maintained.
+Maple is developed on nights and weekends. If it saves you time, consider [sponsoring on GitHub](https://github.com/sponsors/poolcamacho) so it stays free and actively maintained.
 
 ## License
 
