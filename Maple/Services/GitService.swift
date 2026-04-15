@@ -53,11 +53,13 @@ actor GitService {
             throw GitError.processLaunchFailed(underlying: "git \(cmd): \(detail)")
         }
 
+        // Start draining BEFORE waiting on the process. macOS pipe buffers cap at
+        // ~64KB; if git produces more output than that and nothing is reading,
+        // git blocks on write, the process never exits, and our timeout fires.
+        // The read tasks must be live for the whole lifetime of the child.
+        let drainTasks = startDraining(stdout: stdout, stderr: stderr)
         let completed = await waitForProcess(process, timeout: timeout)
-
-        // Always drain the pipes, even on timeout, so their file descriptors
-        // aren't held open by the background read tasks.
-        let (outData, errData) = await drainAndClose(stdout: stdout, stderr: stderr)
+        let (outData, errData) = await awaitDrain(drainTasks, stdout: stdout, stderr: stderr)
 
         guard completed else {
             throw GitError.timedOut(command: arguments.joined(separator: " "), seconds: Int(timeout))
@@ -123,23 +125,26 @@ actor GitService {
         }
     }
 
-    private func drainAndClose(stdout: Pipe, stderr: Pipe) async -> (Data, Data) {
-        // Read pipes on background threads to avoid deadlocks
-        // (pipes can fill their buffer and block the process)
-        async let outRead = Task.detached {
-            stdout.fileHandleForReading.readDataToEndOfFile()
-        }.value
-        async let errRead = Task.detached {
-            stderr.fileHandleForReading.readDataToEndOfFile()
-        }.value
+    /// Spawns detached tasks that drain stdout and stderr to EOF. Called before
+    /// the process wait so the kernel pipe buffer never fills up and blocks git.
+    private func startDraining(stdout: Pipe, stderr: Pipe) -> (out: Task<Data, Never>, err: Task<Data, Never>) {
+        let outTask = Task.detached { stdout.fileHandleForReading.readDataToEndOfFile() }
+        let errTask = Task.detached { stderr.fileHandleForReading.readDataToEndOfFile() }
+        return (outTask, errTask)
+    }
 
-        let outData = await outRead
-        let errData = await errRead
-
-        // Close the read ends explicitly so deinit ordering never delays cleanup.
+    /// Awaits the drain tasks (now that the process has exited or been terminated)
+    /// and explicitly closes the pipe read ends so deinit ordering never delays
+    /// the file descriptor release.
+    private func awaitDrain(
+        _ tasks: (out: Task<Data, Never>, err: Task<Data, Never>),
+        stdout: Pipe,
+        stderr: Pipe
+    ) async -> (Data, Data) {
+        let outData = await tasks.out.value
+        let errData = await tasks.err.value
         try? stdout.fileHandleForReading.close()
         try? stderr.fileHandleForReading.close()
-
         return (outData, errData)
     }
 
