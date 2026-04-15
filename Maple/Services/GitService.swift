@@ -32,7 +32,12 @@ actor GitService {
 
     private static let defaultTimeout: TimeInterval = 30
 
-    func run(_ arguments: [String], in directory: String, timeout: TimeInterval = defaultTimeout) async throws -> String {
+    func run(
+        _ arguments: [String],
+        in directory: String,
+        timeout: TimeInterval = defaultTimeout,
+        stdin: String? = nil
+    ) async throws -> String {
         guard FileManager.default.isExecutableFile(atPath: Self.gitPath) else {
             throw GitError.gitNotFound(path: Self.gitPath)
         }
@@ -40,7 +45,20 @@ actor GitService {
         let process = makeProcess(arguments: arguments, directory: directory)
         let stdout = Pipe(); process.standardOutput = stdout
         let stderr = Pipe(); process.standardError = stderr
-        let stdinFD = attachDevNullStdin(to: process)
+
+        let stdinPipe: Pipe?
+        let stdinFD: Int32
+        if stdin != nil {
+            // Caller wants to feed data in. Use a Pipe; we'll write after launch
+            // and close the write end so git sees EOF.
+            let pipe = Pipe()
+            process.standardInput = pipe
+            stdinPipe = pipe
+            stdinFD = -1
+        } else {
+            stdinPipe = nil
+            stdinFD = attachDevNullStdin(to: process)
+        }
 
         do {
             try process.run()
@@ -51,6 +69,19 @@ actor GitService {
             let nsError = error as NSError
             let detail = "\(nsError.domain) code=\(nsError.code) — \(nsError.localizedDescription)"
             throw GitError.processLaunchFailed(underlying: "git \(cmd): \(detail)")
+        }
+
+        // If stdin was provided, write it now and close the write end so the
+        // child sees EOF and can exit. Writing before the drain starts is safe
+        // for small payloads (< pipe buffer); for larger ones we'd need to
+        // write in a detached task too, but interactive staging patches are
+        // well below that threshold in practice.
+        if let stdinPipe, let stdin {
+            let handle = stdinPipe.fileHandleForWriting
+            if let data = stdin.data(using: .utf8) {
+                try? handle.write(contentsOf: data)
+            }
+            try? handle.close()
         }
 
         // Start draining BEFORE waiting on the process. macOS pipe buffers cap at
@@ -394,40 +425,21 @@ actor GitService {
         return lines
     }
 
-    static func parseDiff(_ output: String) -> [DiffLine] {
-        var lines: [DiffLine] = []
-        var oldLine = 0
-        var newLine = 0
+    // Diff parsing lives in `DiffParser`. These thin aliases keep older callers
+    // that used Self.parseDiff / Self.parseDiffFiles working without churn.
+    static func parseDiffFiles(_ output: String) -> [DiffFile] { DiffParser.parseFiles(output) }
+    static func parseDiff(_ output: String) -> [DiffLine] { DiffParser.parseFlat(output) }
 
-        for rawLine in output.components(separatedBy: "\n") {
-            if rawLine.hasPrefix("@@") {
-                // Hunk header format: "@@ -oldStart,oldCount +newStart,newCount @@"
-                let numbers = rawLine.components(separatedBy: " ")
-                if numbers.count >= 3 {
-                    let newPart = numbers[2]
-                    let oldPart = numbers[1]
-                    newLine = Int(newPart.dropFirst().components(separatedBy: ",").first ?? "0") ?? 0
-                    oldLine = Int(oldPart.dropFirst().components(separatedBy: ",").first ?? "0") ?? 0
-                }
-                lines.append(DiffLine(content: rawLine, type: .header, oldLineNumber: nil, newLineNumber: nil))
-            } else if rawLine.hasPrefix("+") && !rawLine.hasPrefix("+++") {
-                let content = String(rawLine.dropFirst())
-                lines.append(DiffLine(content: content, type: .addition, oldLineNumber: nil, newLineNumber: newLine))
-                newLine += 1
-            } else if rawLine.hasPrefix("-") && !rawLine.hasPrefix("---") {
-                let content = String(rawLine.dropFirst())
-                lines.append(DiffLine(content: content, type: .deletion, oldLineNumber: oldLine, newLineNumber: nil))
-                oldLine += 1
-            } else if rawLine.hasPrefix(" ") {
-                let content = String(rawLine.dropFirst())
-                lines.append(DiffLine(content: content, type: .context, oldLineNumber: oldLine, newLineNumber: newLine))
-                oldLine += 1
-                newLine += 1
-            }
-            // Silently drop "diff --git", "index", "---", "+++" preamble lines.
-        }
+    // MARK: - Apply patch (for interactive staging)
 
-        return lines
+    /// Pipes a patch to `git apply`, optionally with `--cached` (to stage into
+    /// the index) and/or `--reverse` (to unstage from the index).
+    func applyPatch(_ patch: String, cached: Bool = false, reverse: Bool = false, in directory: String) async throws {
+        var args = ["apply", "--whitespace=nowarn"]
+        if cached { args.append("--cached") }
+        if reverse { args.append("--reverse") }
+        args.append("-")
+        _ = try await run(args, in: directory, stdin: patch)
     }
 
     // MARK: - Blame
