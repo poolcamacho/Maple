@@ -162,69 +162,103 @@ struct CommitGraphRowCanvas: View {
     let laneWidth: CGFloat
     let rowHeight: CGFloat
 
+    private let edgeWidth: CGFloat = 2.0
+    private let nodeDiameter: CGFloat = 9
+    private let mergeInnerDiameter: CGFloat = 5
+    private let mergeOuterDiameter: CGFloat = 13
+    private let mergeRingWidth: CGFloat = 2.0
+    private let laneOffset: CGFloat = 12
+
     var body: some View {
         Canvas { context, _ in
-            let laneOffset: CGFloat = 12  // leading padding before lane 0
-
             func xFor(lane: Int) -> CGFloat {
                 laneOffset + CGFloat(lane) * laneWidth + laneWidth / 2
             }
 
-            // 1) Edges touching this row
             for edge in layout.edges {
                 guard edge.fromRow <= rowIndex, rowIndex <= edge.toRow else { continue }
 
                 let fromX = xFor(lane: edge.fromLane)
                 let toX = xFor(lane: edge.toLane)
                 let color = CommitGraphColors.color(forLane: edge.toLane)
+                let path = edgePath(from: fromX, to: toX, edgeFromRow: edge.fromRow, edgeToRow: edge.toRow)
 
-                var path = Path()
-
-                if edge.fromRow == rowIndex && edge.toRow == rowIndex {
-                    // Degenerate same-row edge (shouldn't happen with parent relationships)
-                    path.move(to: CGPoint(x: fromX, y: rowHeight / 2))
-                    path.addLine(to: CGPoint(x: toX, y: rowHeight / 2))
-                } else if edge.fromRow == rowIndex {
-                    // Start half: from commit center out to bottom edge, potentially curving to another lane
-                    path.move(to: CGPoint(x: fromX, y: rowHeight / 2))
-                    if fromX == toX {
-                        path.addLine(to: CGPoint(x: toX, y: rowHeight))
-                    } else {
-                        path.addCurve(
-                            to: CGPoint(x: toX, y: rowHeight),
-                            control1: CGPoint(x: fromX, y: rowHeight * 0.82),
-                            control2: CGPoint(x: toX, y: rowHeight * 0.68)
-                        )
-                    }
-                } else if edge.toRow == rowIndex {
-                    // End half: top edge down to commit center, vertical at destination lane
-                    path.move(to: CGPoint(x: toX, y: 0))
-                    path.addLine(to: CGPoint(x: toX, y: rowHeight / 2))
-                } else {
-                    // Crossing: vertical at destination lane from top to bottom
-                    path.move(to: CGPoint(x: toX, y: 0))
-                    path.addLine(to: CGPoint(x: toX, y: rowHeight))
-                }
-
-                context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: edgeWidth, lineCap: .round))
             }
 
-            // 2) Node circle for this row (drawn last so it sits above edges)
             if let node = layout.node(atRow: rowIndex) {
-                let x = xFor(lane: node.lane)
-                let y = rowHeight / 2
-                let color = CommitGraphColors.color(forLane: node.lane)
-
-                let diameter: CGFloat = node.isMerge ? 10 : 8
-                let rect = CGRect(x: x - diameter / 2, y: y - diameter / 2, width: diameter, height: diameter)
-
-                context.fill(Path(ellipseIn: rect), with: .color(color))
-
-                if node.isMerge {
-                    let outer = rect.insetBy(dx: -2.5, dy: -2.5)
-                    context.stroke(Path(ellipseIn: outer), with: .color(color), lineWidth: 1.5)
-                }
+                drawNode(node, in: context, xFor: xFor)
             }
+        }
+    }
+
+    /// Returns the slice of the edge that lives in the current row. Lane transitions
+    /// happen entirely inside the child row (the `fromRow` end) so branches visibly
+    /// originate from the source commit rather than drifting across multiple rows.
+    private func edgePath(from fromX: CGFloat, to toX: CGFloat, edgeFromRow: Int, edgeToRow: Int) -> Path {
+        var path = Path()
+
+        if edgeFromRow == rowIndex && edgeToRow == rowIndex {
+            path.move(to: CGPoint(x: fromX, y: rowHeight / 2))
+            path.addLine(to: CGPoint(x: toX, y: rowHeight / 2))
+        } else if edgeFromRow == rowIndex {
+            path.move(to: CGPoint(x: fromX, y: rowHeight / 2))
+            if fromX == toX {
+                path.addLine(to: CGPoint(x: toX, y: rowHeight))
+            } else {
+                // Smoother S: stay at source-x longer then sweep into target-x near the bottom
+                path.addCurve(
+                    to: CGPoint(x: toX, y: rowHeight),
+                    control1: CGPoint(x: fromX, y: rowHeight * 0.75),
+                    control2: CGPoint(x: toX, y: rowHeight * 0.80)
+                )
+            }
+        } else if edgeToRow == rowIndex {
+            path.move(to: CGPoint(x: toX, y: 0))
+            path.addLine(to: CGPoint(x: toX, y: rowHeight / 2))
+        } else {
+            path.move(to: CGPoint(x: toX, y: 0))
+            path.addLine(to: CGPoint(x: toX, y: rowHeight))
+        }
+
+        return path
+    }
+
+    /// Regular commit: filled dot. Merge: hollow ring with a small inner dot, so joins
+    /// stay readable over vertical lane lines that cross behind them.
+    private func drawNode(_ node: CommitGraphLayout.Node, in context: GraphicsContext, xFor: (Int) -> CGFloat) {
+        let x = xFor(node.lane)
+        let y = rowHeight / 2
+        let color = CommitGraphColors.color(forLane: node.lane)
+
+        if node.isMerge {
+            let outerRect = CGRect(
+                x: x - mergeOuterDiameter / 2,
+                y: y - mergeOuterDiameter / 2,
+                width: mergeOuterDiameter,
+                height: mergeOuterDiameter
+            )
+            context.stroke(
+                Path(ellipseIn: outerRect),
+                with: .color(color),
+                lineWidth: mergeRingWidth
+            )
+
+            let innerRect = CGRect(
+                x: x - mergeInnerDiameter / 2,
+                y: y - mergeInnerDiameter / 2,
+                width: mergeInnerDiameter,
+                height: mergeInnerDiameter
+            )
+            context.fill(Path(ellipseIn: innerRect), with: .color(color))
+        } else {
+            let rect = CGRect(
+                x: x - nodeDiameter / 2,
+                y: y - nodeDiameter / 2,
+                width: nodeDiameter,
+                height: nodeDiameter
+            )
+            context.fill(Path(ellipseIn: rect), with: .color(color))
         }
     }
 }

@@ -97,7 +97,9 @@ enum CommitGraphBuilder {
                         activeLanes.append(parent)
                     }
                     maxLaneSeen = max(maxLaneSeen, parentLane + 1)
-                    pendingEdges.append(PendingEdge(fromRow: row, fromLane: parentLane, parentID: parent, isMergeParent: true))
+                    // fromLane is the child's lane so the edge visibly starts from
+                    // the merge node; toLane (the parent's lane) is resolved below.
+                    pendingEdges.append(PendingEdge(fromRow: row, fromLane: lane, parentID: parent, isMergeParent: true))
                 }
             }
         }
