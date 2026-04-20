@@ -6,6 +6,10 @@
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5-orange)](https://swift.org)
 [![License: MIT](https://img.shields.io/github/license/poolcamacho/Maple)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/poolcamacho/Maple?style=flat)](https://github.com/poolcamacho/Maple/stargazers)
+[![Forks](https://img.shields.io/github/forks/poolcamacho/Maple?style=flat)](https://github.com/poolcamacho/Maple/network/members)
+[![Issues](https://img.shields.io/github/issues/poolcamacho/Maple)](https://github.com/poolcamacho/Maple/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/poolcamacho/Maple?style=flat)](https://github.com/poolcamacho/Maple/commits/master)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/poolcamacho?label=Sponsor&logo=GitHub)](https://github.com/sponsors/poolcamacho)
 
 A **free, fast, native** macOS Git client built with SwiftUI. Inspired by [GitExtensions](https://gitextensions.github.io/), designed to feel at home on macOS.
@@ -21,7 +25,7 @@ Most Git GUIs on macOS are Electron based, locked behind a subscription, or over
 ## Features
 
 - **Real commit graph.** Lane assignment, curved edges per parent, merge nodes rendered as a ring so joins stay legible across busy histories.
-- **Interactive staging.** Tick a checkbox on any hunk header and stage only what you want. Works in reverse too: view the staged diff and unstage selected hunks without touching the rest.
+- **Interactive staging.** Tick a checkbox on any hunk header — or any individual `+` / `-` line — and stage only what you want. `Cmd+S` stages (or unstages) the current selection. Works in reverse too: view the staged diff and surgically peel changes back into the working tree.
 - **Diff viewer with Blame toggle.** Syntax coloured hunks, line numbers, and per line author / hash / date when Blame is on.
 - **Merge and rebase with conflict UX.** Detects `UU`, `AA`, `DD` automatically, shows an operation banner with Abort / Continue / Skip, and lets you resolve per file with Use Ours or Use Theirs.
 - **Branch management.** Local and remote branches, checkout (including remote to local tracking), create, rename, delete.
@@ -83,15 +87,16 @@ Utils/      FolderPicker, DateExtensions
 - [x] Commit graph with real branch topology
 - [x] Merge and rebase with conflict resolution UI
 - [x] Interactive staging — hunk level (select hunks with checkboxes, stage or unstage)
+- [x] Interactive staging — line level (pick individual `+` / `-` lines within a hunk)
+- [x] `Cmd+S` stages / unstages the current selection
 
 ### Next
 
-- [ ] Interactive staging — line level (pick individual `+` / `-` lines within a hunk)
 - [ ] Tag management (create, list, delete)
 - [ ] Search filtering (commits, files)
 - [ ] Clone from URL
 - [ ] Remote management (add, remove, configure)
-- [ ] Keyboard shortcuts (`Cmd+S` stage, `Cmd+Enter` commit, command palette)
+- [ ] Keyboard shortcuts (`Cmd+Enter` commit, command palette)
 - [ ] Persist open repositories between sessions
 - [ ] Settings and preferences
 - [ ] Signed and notarized releases

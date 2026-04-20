@@ -11,13 +11,13 @@ struct DiffView: View {
     let fileName: String?
     let diffLines: [DiffLine]
     var diffFile: DiffFile?
-    var selection: Binding<Set<Int>>?
+    var selection: Binding<[Int: Set<Int>]>?
 
     init(
         fileName: String?,
         diffLines: [DiffLine],
         diffFile: DiffFile? = nil,
-        selection: Binding<Set<Int>>? = nil
+        selection: Binding<[Int: Set<Int>]>? = nil
     ) {
         self.fileName = fileName
         self.diffLines = diffLines
@@ -83,29 +83,88 @@ struct DiffView: View {
         }
     }
 
-    private func structuredBody(file: DiffFile, selection: Binding<Set<Int>>) -> some View {
+    private func structuredBody(
+        file: DiffFile,
+        selection: Binding<[Int: Set<Int>]>
+    ) -> some View {
         ScrollView(.vertical) {
             LazyVStack(spacing: 0) {
-                ForEach(Array(file.hunks.enumerated()), id: \.offset) { index, hunk in
+                ForEach(Array(file.hunks.enumerated()), id: \.offset) { hunkIndex, hunk in
                     HunkHeaderRow(
                         header: hunk.header,
-                        isSelected: Binding(
-                            get: { selection.wrappedValue.contains(index) },
-                            set: { newValue in
-                                if newValue {
-                                    selection.wrappedValue.insert(index)
-                                } else {
-                                    selection.wrappedValue.remove(index)
-                                }
-                            }
-                        )
+                        isSelected: headerBinding(hunk: hunk, hunkIndex: hunkIndex, selection: selection)
                     )
-                    ForEach(hunk.lines) { line in
-                        DiffLineView(line: line)
+                    ForEach(Array(hunk.lines.enumerated()), id: \.offset) { lineIndex, line in
+                        switch line.type {
+                        case .addition, .deletion:
+                            DiffLineView(
+                                line: line,
+                                isSelected: lineBinding(
+                                    hunkIndex: hunkIndex,
+                                    lineIndex: lineIndex,
+                                    selection: selection
+                                ),
+                                reservesSelectionSlot: true
+                            )
+                        case .context, .header:
+                            DiffLineView(line: line, reservesSelectionSlot: true)
+                        }
                     }
                 }
             }
         }
+    }
+
+    private func headerBinding(
+        hunk: DiffHunk,
+        hunkIndex: Int,
+        selection: Binding<[Int: Set<Int>]>
+    ) -> Binding<Bool> {
+        let modifiable: Set<Int> = Self.modifiableIndices(in: hunk)
+        return Binding(
+            get: {
+                guard !modifiable.isEmpty else { return false }
+                return selection.wrappedValue[hunkIndex] == modifiable
+            },
+            set: { newValue in
+                if newValue {
+                    selection.wrappedValue[hunkIndex] = modifiable
+                } else {
+                    selection.wrappedValue.removeValue(forKey: hunkIndex)
+                }
+            }
+        )
+    }
+
+    private func lineBinding(
+        hunkIndex: Int,
+        lineIndex: Int,
+        selection: Binding<[Int: Set<Int>]>
+    ) -> Binding<Bool> {
+        Binding(
+            get: { selection.wrappedValue[hunkIndex]?.contains(lineIndex) ?? false },
+            set: { newValue in
+                var current = selection.wrappedValue[hunkIndex] ?? []
+                if newValue {
+                    current.insert(lineIndex)
+                } else {
+                    current.remove(lineIndex)
+                }
+                if current.isEmpty {
+                    selection.wrappedValue.removeValue(forKey: hunkIndex)
+                } else {
+                    selection.wrappedValue[hunkIndex] = current
+                }
+            }
+        )
+    }
+
+    static func modifiableIndices(in hunk: DiffHunk) -> Set<Int> {
+        var out: Set<Int> = []
+        for (idx, line) in hunk.lines.enumerated() where line.type == .addition || line.type == .deletion {
+            out.insert(idx)
+        }
+        return out
     }
 
     private var additions: Int {
@@ -147,6 +206,18 @@ private struct HunkHeaderRow: View {
 
 struct DiffLineView: View {
     let line: DiffLine
+    var isSelected: Binding<Bool>?
+    var reservesSelectionSlot: Bool = false
+
+    init(
+        line: DiffLine,
+        isSelected: Binding<Bool>? = nil,
+        reservesSelectionSlot: Bool = false
+    ) {
+        self.line = line
+        self.isSelected = isSelected
+        self.reservesSelectionSlot = reservesSelectionSlot
+    }
 
     private var backgroundColor: Color {
         switch line.type {
@@ -177,6 +248,16 @@ struct DiffLineView: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            if let isSelected {
+                Toggle("", isOn: isSelected)
+                    .toggleStyle(.checkbox)
+                    .labelsHidden()
+                    .padding(.horizontal, 4)
+                    .frame(width: slotWidth)
+            } else if reservesSelectionSlot {
+                Color.clear.frame(width: slotWidth)
+            }
+
             HStack(spacing: 2) {
                 Text(line.oldLineNumber.map { String($0) } ?? "")
                     .frame(width: 38, alignment: .trailing)
@@ -201,6 +282,8 @@ struct DiffLineView: View {
         .padding(.vertical, 1.5)
         .background(backgroundColor)
     }
+
+    private var slotWidth: CGFloat { 28 }
 }
 
 #Preview {

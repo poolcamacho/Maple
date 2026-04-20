@@ -10,30 +10,43 @@ import SwiftUI
 private struct HunkStagingToolbar: View {
     @Bindable var state: AppState
 
-    private var hasSelection: Bool { !state.selectedHunks.isEmpty }
-
     private var isStagedView: Bool {
         state.selectedFileChange?.isStaged ?? false
     }
 
-    private var hunkCount: Int {
-        state.currentDiffFile?.hunks.count ?? 0
+    private var selectedLineCount: Int {
+        state.selectedLines.values.reduce(0) { $0 + $1.count }
     }
+
+    private var modifiableLineCount: Int {
+        guard let file = state.currentDiffFile else { return 0 }
+        return file.hunks.reduce(0) { total, hunk in
+            total + hunk.lines.reduce(0) { count, line in
+                count + ((line.type == .addition || line.type == .deletion) ? 1 : 0)
+            }
+        }
+    }
+
+    private var allSelected: Bool {
+        modifiableLineCount > 0 && selectedLineCount == modifiableLineCount
+    }
+
+    private var hasSelection: Bool { selectedLineCount > 0 }
 
     var body: some View {
         HStack(spacing: 8) {
             Button {
-                if state.selectedHunks.count == hunkCount {
-                    state.selectedHunks = []
+                if allSelected {
+                    state.selectedLines = [:]
                 } else {
-                    state.selectedHunks = Set(0..<hunkCount)
+                    state.selectedLines = Self.allLines(in: state.currentDiffFile)
                 }
             } label: {
-                Text(state.selectedHunks.count == hunkCount && hunkCount > 0 ? "Deselect all" : "Select all")
+                Text(allSelected ? "Deselect all" : "Select all")
             }
-            .disabled(hunkCount == 0)
+            .disabled(modifiableLineCount == 0)
 
-            Text("\(state.selectedHunks.count) of \(hunkCount) hunks")
+            Text("\(selectedLineCount) of \(modifiableLineCount) lines")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -41,23 +54,37 @@ private struct HunkStagingToolbar: View {
 
             if isStagedView {
                 Button {
-                    Task { await state.coordinator.unstageSelectedHunks() }
+                    Task { await state.coordinator.unstageSelectedLines() }
                 } label: {
                     Label("Unstage selected", systemImage: "minus.circle")
                 }
+                .keyboardShortcut("s", modifiers: .command)
                 .disabled(!hasSelection || state.operationInProgress)
             } else {
                 Button {
-                    Task { await state.coordinator.stageSelectedHunks() }
+                    Task { await state.coordinator.stageSelectedLines() }
                 } label: {
                     Label("Stage selected", systemImage: "plus.circle")
                 }
+                .keyboardShortcut("s", modifiers: .command)
                 .disabled(!hasSelection || state.operationInProgress)
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(.bar)
+    }
+
+    private static func allLines(in file: DiffFile?) -> [Int: Set<Int>] {
+        guard let file else { return [:] }
+        var out: [Int: Set<Int>] = [:]
+        for (hunkIndex, hunk) in file.hunks.enumerated() {
+            let indices = DiffView.modifiableIndices(in: hunk)
+            if !indices.isEmpty {
+                out[hunkIndex] = indices
+            }
+        }
+        return out
     }
 }
 
@@ -134,7 +161,7 @@ struct ChangesTabView: View {
                         fileName: state.selectedFileChange?.path,
                         diffLines: state.currentDiffLines,
                         diffFile: state.currentDiffFile,
-                        selection: state.currentDiffFile != nil ? $state.selectedHunks : nil
+                        selection: state.currentDiffFile != nil ? $state.selectedLines : nil
                     )
                 case .blame:
                     BlameView(fileName: state.selectedFileChange?.path, blameLines: state.currentBlameLines)
