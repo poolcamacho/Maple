@@ -22,6 +22,8 @@ final class AppState {
     var branches: [GitBranch] = []
     var stashes: [GitStashEntry] = []
     var currentDiffLines: [DiffLine] = []
+    var currentDiffFile: DiffFile?
+    var selectedHunks: Set<Int> = []
     var commitDiffLines: [DiffLine] = []
     var currentBlameLines: [BlameLine] = []
     var changesViewMode: ChangesViewMode = .diff

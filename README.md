@@ -21,6 +21,7 @@ Most Git GUIs on macOS are Electron based, locked behind a subscription, or over
 ## Features
 
 - **Real commit graph.** Lane assignment, curved edges per parent, merge nodes rendered as a ring so joins stay legible across busy histories.
+- **Interactive staging.** Tick a checkbox on any hunk header and stage only what you want. Works in reverse too: view the staged diff and unstage selected hunks without touching the rest.
 - **Diff viewer with Blame toggle.** Syntax coloured hunks, line numbers, and per line author / hash / date when Blame is on.
 - **Merge and rebase with conflict UX.** Detects `UU`, `AA`, `DD` automatically, shows an operation banner with Abort / Continue / Skip, and lets you resolve per file with Use Ours or Use Theirs.
 - **Branch management.** Local and remote branches, checkout (including remote to local tracking), create, rename, delete.
@@ -81,10 +82,11 @@ Utils/      FolderPicker, DateExtensions
 - [x] Blame view with per line author, hash, date
 - [x] Commit graph with real branch topology
 - [x] Merge and rebase with conflict resolution UI
+- [x] Interactive staging — hunk level (select hunks with checkboxes, stage or unstage)
 
 ### Next
 
-- [ ] Interactive staging (stage individual hunks and lines)
+- [ ] Interactive staging — line level (pick individual `+` / `-` lines within a hunk)
 - [ ] Tag management (create, list, delete)
 - [ ] Search filtering (commits, files)
 - [ ] Clone from URL

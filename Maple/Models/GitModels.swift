@@ -101,6 +101,83 @@ struct GitBranch: Identifiable, Hashable, Sendable {
     }
 }
 
+/// A contiguous run of diff lines under a single `@@ ... @@` hunk header.
+/// Carries the original header text so patches can be reconstructed without
+/// re-parsing line numbers into the same format git expects.
+struct DiffHunk: Identifiable, Sendable {
+    let id = UUID()
+    let header: String
+    let oldStart: Int
+    let oldCount: Int
+    let newStart: Int
+    let newCount: Int
+    let lines: [DiffLine]
+
+    nonisolated init(
+        header: String,
+        oldStart: Int,
+        oldCount: Int,
+        newStart: Int,
+        newCount: Int,
+        lines: [DiffLine]
+    ) {
+        self.header = header
+        self.oldStart = oldStart
+        self.oldCount = oldCount
+        self.newStart = newStart
+        self.newCount = newCount
+        self.lines = lines
+    }
+}
+
+/// One file's diff: the raw preamble lines (`diff --git`, `index`, `---`, `+++`)
+/// grouped together with that file's hunks. Preserving the preamble is what
+/// lets us round-trip a subset of hunks back into `git apply --cached`.
+struct DiffFile: Identifiable, Sendable {
+    let id = UUID()
+    let path: String?
+    let preamble: [String]
+    let hunks: [DiffHunk]
+
+    nonisolated init(path: String?, preamble: [String], hunks: [DiffHunk]) {
+        self.path = path
+        self.preamble = preamble
+        self.hunks = hunks
+    }
+
+    /// Flattened view for rendering; mirrors the old `[DiffLine]` shape
+    /// (hunk headers as `.header` lines, followed by their content lines).
+    var flattened: [DiffLine] {
+        var out: [DiffLine] = []
+        for hunk in hunks {
+            out.append(DiffLine(content: hunk.header, type: .header, oldLineNumber: nil, newLineNumber: nil))
+            out.append(contentsOf: hunk.lines)
+        }
+        return out
+    }
+
+    /// Builds a patch string including only the hunks at the given indices.
+    /// Only valid for whole-hunk selection (the hunk header's line counts stay
+    /// truthful). Partial-line selection needs a different codepath that also
+    /// rewrites those counts.
+    func patchText(forHunkIndices selected: Set<Int>) -> String {
+        guard !selected.isEmpty, !preamble.isEmpty else { return "" }
+        var lines: [String] = preamble
+        for (index, hunk) in hunks.enumerated() where selected.contains(index) {
+            lines.append(hunk.header)
+            for line in hunk.lines {
+                switch line.type {
+                case .addition: lines.append("+" + line.content)
+                case .deletion: lines.append("-" + line.content)
+                case .context: lines.append(" " + line.content)
+                case .header: continue
+                }
+            }
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
+}
+
 struct BlameLine: Identifiable, Sendable {
     let id = UUID()
     let lineNumber: Int
