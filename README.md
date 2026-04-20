@@ -6,6 +6,10 @@
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5-orange)](https://swift.org)
 [![License: MIT](https://img.shields.io/github/license/poolcamacho/Maple)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/poolcamacho/Maple?style=flat)](https://github.com/poolcamacho/Maple/stargazers)
+[![Forks](https://img.shields.io/github/forks/poolcamacho/Maple?style=flat)](https://github.com/poolcamacho/Maple/network/members)
+[![Issues](https://img.shields.io/github/issues/poolcamacho/Maple)](https://github.com/poolcamacho/Maple/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/poolcamacho/Maple?style=flat)](https://github.com/poolcamacho/Maple/commits/master)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/poolcamacho?label=Sponsor&logo=GitHub)](https://github.com/sponsors/poolcamacho)
 
 A **free, fast, native** macOS Git client built with SwiftUI. Inspired by [GitExtensions](https://gitextensions.github.io/), designed to feel at home on macOS.
