@@ -393,6 +393,21 @@ actor GitService {
         return Self.parseDiff(output)
     }
 
+    /// Structured variant of `diff(for:staged:in:)` returning the parsed
+    /// `DiffFile` (preamble + hunks) so callers can build partial patches.
+    /// Returns `nil` when git produced no diff (no changes).
+    func diffFile(for filePath: String, staged: Bool, in directory: String) async throws -> DiffFile? {
+        var args = ["diff", "--no-color"]
+        if staged {
+            args.append("--cached")
+        }
+        args.append("--")
+        args.append(filePath)
+
+        let output = try await run(args, in: directory)
+        return Self.parseDiffFiles(output).first
+    }
+
     func diffForCommit(_ commitHash: String, in directory: String) async throws -> [DiffLine] {
         let output = try await run(
             ["show", "--no-color", "--format=", commitHash],

@@ -7,6 +7,60 @@
 
 import SwiftUI
 
+private struct HunkStagingToolbar: View {
+    @Bindable var state: AppState
+
+    private var hasSelection: Bool { !state.selectedHunks.isEmpty }
+
+    private var isStagedView: Bool {
+        state.selectedFileChange?.isStaged ?? false
+    }
+
+    private var hunkCount: Int {
+        state.currentDiffFile?.hunks.count ?? 0
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button {
+                if state.selectedHunks.count == hunkCount {
+                    state.selectedHunks = []
+                } else {
+                    state.selectedHunks = Set(0..<hunkCount)
+                }
+            } label: {
+                Text(state.selectedHunks.count == hunkCount && hunkCount > 0 ? "Deselect all" : "Select all")
+            }
+            .disabled(hunkCount == 0)
+
+            Text("\(state.selectedHunks.count) of \(hunkCount) hunks")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            if isStagedView {
+                Button {
+                    Task { await state.coordinator.unstageSelectedHunks() }
+                } label: {
+                    Label("Unstage selected", systemImage: "minus.circle")
+                }
+                .disabled(!hasSelection || state.operationInProgress)
+            } else {
+                Button {
+                    Task { await state.coordinator.stageSelectedHunks() }
+                } label: {
+                    Label("Stage selected", systemImage: "plus.circle")
+                }
+                .disabled(!hasSelection || state.operationInProgress)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(.bar)
+    }
+}
+
 struct ChangesTabView: View {
     @Bindable var state: AppState
     let availableWidth: CGFloat
@@ -72,7 +126,16 @@ struct ChangesTabView: View {
 
                 switch state.changesViewMode {
                 case .diff:
-                    DiffView(fileName: state.selectedFileChange?.path, diffLines: state.currentDiffLines)
+                    if state.currentDiffFile != nil {
+                        HunkStagingToolbar(state: state)
+                        Divider()
+                    }
+                    DiffView(
+                        fileName: state.selectedFileChange?.path,
+                        diffLines: state.currentDiffLines,
+                        diffFile: state.currentDiffFile,
+                        selection: state.currentDiffFile != nil ? $state.selectedHunks : nil
+                    )
                 case .blame:
                     BlameView(fileName: state.selectedFileChange?.path, blameLines: state.currentBlameLines)
                 }

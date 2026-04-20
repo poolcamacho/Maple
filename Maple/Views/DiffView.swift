@@ -10,6 +10,20 @@ import SwiftUI
 struct DiffView: View {
     let fileName: String?
     let diffLines: [DiffLine]
+    var diffFile: DiffFile?
+    var selection: Binding<Set<Int>>?
+
+    init(
+        fileName: String?,
+        diffLines: [DiffLine],
+        diffFile: DiffFile? = nil,
+        selection: Binding<Set<Int>>? = nil
+    ) {
+        self.fileName = fileName
+        self.diffLines = diffLines
+        self.diffFile = diffFile
+        self.selection = selection
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,12 +65,43 @@ struct DiffView: View {
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let file = diffFile, let selection {
+                structuredBody(file: file, selection: selection)
             } else {
-                ScrollView(.vertical) {
-                    LazyVStack(spacing: 0) {
-                        ForEach(diffLines) { line in
-                            DiffLineView(line: line)
-                        }
+                flatBody
+            }
+        }
+    }
+
+    private var flatBody: some View {
+        ScrollView(.vertical) {
+            LazyVStack(spacing: 0) {
+                ForEach(diffLines) { line in
+                    DiffLineView(line: line)
+                }
+            }
+        }
+    }
+
+    private func structuredBody(file: DiffFile, selection: Binding<Set<Int>>) -> some View {
+        ScrollView(.vertical) {
+            LazyVStack(spacing: 0) {
+                ForEach(Array(file.hunks.enumerated()), id: \.offset) { index, hunk in
+                    HunkHeaderRow(
+                        header: hunk.header,
+                        isSelected: Binding(
+                            get: { selection.wrappedValue.contains(index) },
+                            set: { newValue in
+                                if newValue {
+                                    selection.wrappedValue.insert(index)
+                                } else {
+                                    selection.wrappedValue.remove(index)
+                                }
+                            }
+                        )
+                    )
+                    ForEach(hunk.lines) { line in
+                        DiffLineView(line: line)
                     }
                 }
             }
@@ -69,6 +114,34 @@ struct DiffView: View {
 
     private var deletions: Int {
         diffLines.filter { $0.type == .deletion }.count
+    }
+}
+
+private struct HunkHeaderRow: View {
+    let header: String
+    @Binding var isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Toggle("", isOn: $isSelected)
+                .toggleStyle(.checkbox)
+                .labelsHidden()
+                .padding(.leading, 8)
+
+            Text("@@")
+                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .foregroundStyle(.blue)
+
+            Text(header)
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            Spacer()
+        }
+        .padding(.vertical, 3)
+        .background(.blue.opacity(0.08))
     }
 }
 
