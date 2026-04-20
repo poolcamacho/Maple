@@ -11,7 +11,7 @@ import Observation
 @Observable
 final class FileWatcher {
 
-    /// Callback fired (on the main thread) when watched directory changes.
+    /// Callback fired on the main actor when the watched directory changes.
     var onChange: (() -> Void)?
 
     private var sources: [DispatchSourceFileSystemObject] = []
@@ -108,7 +108,7 @@ final class FileWatcher {
         )
     }
 
-    deinit {
+    isolated deinit {
         stop()
     }
 }

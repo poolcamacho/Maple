@@ -133,7 +133,7 @@ struct DiffHunk: Identifiable, Sendable {
 /// One file's diff: the raw preamble lines (`diff --git`, `index`, `---`, `+++`)
 /// grouped together with that file's hunks. Preserving the preamble is what
 /// lets us round-trip a subset of hunks back into `git apply --cached`.
-struct DiffFile: Identifiable, Sendable {
+nonisolated struct DiffFile: Identifiable, Sendable {
     let id = UUID()
     let path: String?
     let preamble: [String]

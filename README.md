@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/poolcamacho/Maple/actions/workflows/ci.yml/badge.svg)](https://github.com/poolcamacho/Maple/actions/workflows/ci.yml)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey)](https://www.apple.com/macos/)
-[![Swift](https://img.shields.io/badge/Swift-5-orange)](https://swift.org)
+[![Swift](https://img.shields.io/badge/Swift-6-orange)](https://swift.org)
 [![License: MIT](https://img.shields.io/github/license/poolcamacho/Maple)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/poolcamacho/Maple?style=flat)](https://github.com/poolcamacho/Maple/stargazers)
 [![Forks](https://img.shields.io/github/forks/poolcamacho/Maple?style=flat)](https://github.com/poolcamacho/Maple/network/members)
@@ -46,7 +46,7 @@ Most Git GUIs on macOS are Electron based, locked behind a subscription, or over
 ## Requirements
 
 - macOS 14.0+ (Apple Silicon recommended, Intel supported)
-- Xcode 16+
+- Xcode 26+ (Swift 6.3 toolchain; required for `isolated deinit`)
 - Git installed (ships with Xcode Command Line Tools)
 
 ## Getting started
