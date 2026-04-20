@@ -158,8 +158,7 @@ struct DiffFile: Identifiable, Sendable {
 
     /// Builds a patch string including only the hunks at the given indices.
     /// Only valid for whole-hunk selection (the hunk header's line counts stay
-    /// truthful). Partial-line selection needs a different codepath that also
-    /// rewrites those counts.
+    /// truthful). Partial-line selection lives in `patchText(forLines:)`.
     func patchText(forHunkIndices selected: Set<Int>) -> String {
         guard !selected.isEmpty, !preamble.isEmpty else { return "" }
         var lines: [String] = preamble
@@ -175,6 +174,85 @@ struct DiffFile: Identifiable, Sendable {
             }
         }
         return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// Builds a patch that keeps only the `+` / `-` lines named by `selection`
+    /// within each hunk. Unselected additions are dropped entirely (they do not
+    /// exist in the "old" side of the file). Unselected deletions become
+    /// context lines (they still exist after the patch is applied). The hunk
+    /// header's `oldCount` / `newCount` are rewritten to match the rewritten
+    /// body; `oldStart` / `newStart` stay anchored to their original positions.
+    ///
+    /// - Parameter selection: map of hunk index → set of line indices within
+    ///   that hunk's `lines` array to keep as real `+` / `-` edits.
+    /// - Returns: a git-apply-compatible patch, or an empty string if no hunk
+    ///   contributes any selected change.
+    func patchText(forLines selection: [Int: Set<Int>]) -> String {
+        guard !preamble.isEmpty else { return "" }
+
+        var output: [String] = preamble
+        var anyEmitted = false
+
+        for (hunkIndex, hunk) in hunks.enumerated() {
+            guard let selectedIndices = selection[hunkIndex],
+                  !selectedIndices.isEmpty else { continue }
+
+            let rewritten = Self.rewriteHunk(hunk, selectedLineIndices: selectedIndices)
+            guard rewritten.hasRealEdit else { continue }
+
+            output.append("@@ -\(hunk.oldStart),\(rewritten.oldCount) +\(hunk.newStart),\(rewritten.newCount) @@")
+            output.append(contentsOf: rewritten.body)
+            anyEmitted = true
+        }
+
+        guard anyEmitted else { return "" }
+        return output.joined(separator: "\n") + "\n"
+    }
+
+    private struct RewrittenHunk {
+        var body: [String]
+        var oldCount: Int
+        var newCount: Int
+        var hasRealEdit: Bool
+    }
+
+    private static func rewriteHunk(_ hunk: DiffHunk, selectedLineIndices: Set<Int>) -> RewrittenHunk {
+        var result = RewrittenHunk(body: [], oldCount: 0, newCount: 0, hasRealEdit: false)
+        for (lineIndex, line) in hunk.lines.enumerated() {
+            let isSelected = selectedLineIndices.contains(lineIndex)
+            emit(line: line, isSelected: isSelected, into: &result)
+        }
+        return result
+    }
+
+    private static func emit(line: DiffLine, isSelected: Bool, into result: inout RewrittenHunk) {
+        switch line.type {
+        case .context:
+            result.body.append(" " + line.content)
+            result.oldCount += 1
+            result.newCount += 1
+        case .addition:
+            // Unselected additions are dropped entirely — they don't exist in
+            // the old side and we don't want them in the new side either.
+            guard isSelected else { return }
+            result.body.append("+" + line.content)
+            result.newCount += 1
+            result.hasRealEdit = true
+        case .deletion:
+            if isSelected {
+                result.body.append("-" + line.content)
+                result.oldCount += 1
+                result.hasRealEdit = true
+            } else {
+                // Unselected deletion becomes context so the line survives the
+                // partial patch.
+                result.body.append(" " + line.content)
+                result.oldCount += 1
+                result.newCount += 1
+            }
+        case .header:
+            return
+        }
     }
 }
 

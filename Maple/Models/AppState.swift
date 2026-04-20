@@ -23,7 +23,10 @@ final class AppState {
     var stashes: [GitStashEntry] = []
     var currentDiffLines: [DiffLine] = []
     var currentDiffFile: DiffFile?
-    var selectedHunks: Set<Int> = []
+    /// Line-level selection keyed by hunk index. Values are the indices of
+    /// `+` / `-` lines within that hunk's `lines` array. A hunk with every
+    /// modifiable line selected behaves identically to whole-hunk selection.
+    var selectedLines: [Int: Set<Int>] = [:]
     var commitDiffLines: [DiffLine] = []
     var currentBlameLines: [BlameLine] = []
     var changesViewMode: ChangesViewMode = .diff

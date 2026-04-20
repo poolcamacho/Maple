@@ -137,7 +137,7 @@ final class GitCoordinator {
             state.selectedFileChange = nil
             state.currentDiffLines = []
             state.currentDiffFile = nil
-            state.selectedHunks = []
+            state.selectedLines = [:]
             state.commitDiffLines = []
         } catch {
             state.errorMessage = error.localizedDescription
@@ -180,11 +180,11 @@ final class GitCoordinator {
         guard let path = state.currentRepoPath, let file = state.selectedFileChange else {
             state.currentDiffLines = []
             state.currentDiffFile = nil
-            state.selectedHunks = []
+            state.selectedLines = [:]
             return
         }
 
-        state.selectedHunks = []
+        state.selectedLines = [:]
 
         do {
             if file.status == .untracked {
@@ -259,14 +259,16 @@ final class GitCoordinator {
         }
     }
 
-    // MARK: - Hunk staging
+    // MARK: - Hunk / line staging
 
-    /// Stages the selected hunks of the currently viewed (unstaged) file by
-    /// piping a reconstructed patch to `git apply --cached`.
-    func stageSelectedHunks() async {
+    /// Stages the selected `+` / `-` lines of the currently viewed (unstaged)
+    /// file by piping a reconstructed patch to `git apply --cached`. When an
+    /// entire hunk's worth of lines is selected the result is identical to the
+    /// whole-hunk patch.
+    func stageSelectedLines() async {
         guard let file = state.currentDiffFile,
-              !state.selectedHunks.isEmpty else { return }
-        let patch = file.patchText(forHunkIndices: state.selectedHunks)
+              !state.selectedLines.isEmpty else { return }
+        let patch = file.patchText(forLines: state.selectedLines)
         guard !patch.isEmpty else { return }
 
         await runLightOperation { path in
@@ -275,12 +277,12 @@ final class GitCoordinator {
         await loadFileDiff()
     }
 
-    /// Unstages the selected hunks of the currently viewed (staged) file by
-    /// piping the reverse patch to `git apply --cached --reverse`.
-    func unstageSelectedHunks() async {
+    /// Unstages the selected `+` / `-` lines of the currently viewed (staged)
+    /// file by piping the reverse patch to `git apply --cached --reverse`.
+    func unstageSelectedLines() async {
         guard let file = state.currentDiffFile,
-              !state.selectedHunks.isEmpty else { return }
-        let patch = file.patchText(forHunkIndices: state.selectedHunks)
+              !state.selectedLines.isEmpty else { return }
+        let patch = file.patchText(forLines: state.selectedLines)
         guard !patch.isEmpty else { return }
 
         await runLightOperation { path in
