@@ -58,6 +58,7 @@ private struct HunkStagingToolbar: View {
                 } label: {
                     Label("Unstage selected", systemImage: "minus.circle")
                 }
+                .keyboardShortcut("s", modifiers: .command)
                 .disabled(!hasSelection || state.operationInProgress)
             } else {
                 Button {
@@ -65,6 +66,7 @@ private struct HunkStagingToolbar: View {
                 } label: {
                     Label("Stage selected", systemImage: "plus.circle")
                 }
+                .keyboardShortcut("s", modifiers: .command)
                 .disabled(!hasSelection || state.operationInProgress)
             }
         }
