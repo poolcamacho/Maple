@@ -8,8 +8,9 @@
 import Foundation
 
 /// Parses raw `git diff` / `git show` output into structured `DiffFile` /
-/// `DiffLine` representations.
-enum DiffParser {
+/// `DiffLine` representations. Nonisolated because parsing is pure
+/// value-to-value work that must run in any actor's isolation domain.
+nonisolated enum DiffParser {
 
     /// Structured view: one entry per file, each with its preamble preserved so
     /// a patch can be reconstructed for a subset of hunks later.
