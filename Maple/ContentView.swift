@@ -45,6 +45,13 @@ struct ContentView: View {
         .onChange(of: state.selectedCommit) {
             Task { await state.coordinator.loadCommitDiff() }
         }
+        .onChange(of: state.selectedRepository?.path) { _, newPath in
+            // Selecting a different repo in the sidebar must re-point the file
+            // watcher and reload its data; keyed on `path` so branch-only updates
+            // to the same repo don't retrigger a load.
+            guard newPath != nil else { return }
+            Task { await state.coordinator.selectRepository() }
+        }
         .onAppear {
             state.setupWatcher()
         }

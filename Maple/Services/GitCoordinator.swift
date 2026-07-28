@@ -97,10 +97,23 @@ final class GitCoordinator {
         if !state.repositories.contains(where: { $0.path == path }) {
             state.repositories.append(repo)
         }
+        // Setting the selection drives the watcher + data load through
+        // `selectRepository()` (see ContentView's onChange). Opening the folder
+        // that is already selected won't retrigger, so load explicitly too.
+        let wasAlreadySelected = state.selectedRepository?.path == path
         state.selectedRepository = repo
+        if wasAlreadySelected {
+            await selectRepository()
+        }
+    }
 
+    // MARK: - Repository selection
+
+    /// Re-points the file watcher and loads data for the currently selected
+    /// repository. Invoked whenever the sidebar selection changes.
+    func selectRepository() async {
+        guard let path = state.currentRepoPath else { return }
         state.watcher.watch(directory: path)
-
         await loadRepositoryData()
     }
 
@@ -122,6 +135,11 @@ final class GitCoordinator {
                 statusTask, logTask, branchTask, currentBranchTask, stashTask
             )
 
+            // The selection can change while these awaits are in flight (fast
+            // repo switching, or a watcher-driven refresh). Discard stale results
+            // so one repo's data never renders under another repo's selection.
+            guard state.currentRepoPath == path else { return }
+
             state.fileChanges = status
             state.commits = log
             state.branches = branchList
@@ -140,9 +158,11 @@ final class GitCoordinator {
             state.selectedLines = [:]
             state.commitDiffLines = []
         } catch {
+            guard state.currentRepoPath == path else { return }
             state.errorMessage = error.localizedDescription
         }
 
+        guard state.currentRepoPath == path else { return }
         state.isLoading = false
     }
 
@@ -160,6 +180,10 @@ final class GitCoordinator {
             let (status, branchList, branch, stashList) = try await (
                 statusTask, branchTask, currentBranchTask, stashTask
             )
+
+            // Drop results if the selected repo changed mid-refresh (e.g. a
+            // watcher event for the previous repo landing after a switch).
+            guard state.currentRepoPath == path else { return }
 
             state.fileChanges = status
             state.branches = branchList
