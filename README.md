@@ -66,7 +66,7 @@ brew install --cask maple
 
 If you prefer to build yourself instead of downloading the release:
 
-- Xcode 26+ (Swift 6.3 toolchain; required for `isolated deinit`)
+- Xcode 26+ (Swift 6.3 toolchain)
 
 ```bash
 git clone https://github.com/poolcamacho/Maple.git
