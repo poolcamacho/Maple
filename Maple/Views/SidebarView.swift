@@ -60,6 +60,8 @@ struct SidebarView: View {
                     Image(systemName: "plus")
                 }
                 .help("Open Repository")
+                .accessibilityLabel("Open Repository")
+                .accessibilityIdentifier("sidebar.openRepository")
             }
 
             ToolbarItem {
@@ -69,6 +71,8 @@ struct SidebarView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .help("Refresh")
+                .accessibilityLabel("Refresh")
+                .accessibilityIdentifier("sidebar.refresh")
             }
         }
     }

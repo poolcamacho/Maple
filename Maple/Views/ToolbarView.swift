@@ -166,6 +166,8 @@ struct ToolbarActionButton: View {
         .buttonStyle(.plain)
         .frame(width: 44)
         .help(label)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("toolbar.\(label.lowercased())")
     }
 }
 
@@ -184,6 +186,8 @@ struct ToolbarIconButton: View {
         .buttonStyle(.plain)
         .frame(width: 28)
         .help(help)
+        .accessibilityLabel(help)
+        .accessibilityIdentifier("toolbar.\(help.lowercased())")
     }
 }
 

@@ -220,6 +220,8 @@ struct FileChangeRow: View {
                     .foregroundStyle(actionColor)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(file.isStaged ? "Unstage \(file.path)" : "Stage \(file.path)")
+            .accessibilityIdentifier(file.isStaged ? "staging.unstage" : "staging.stage")
         }
         .contentShape(Rectangle())
     }

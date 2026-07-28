@@ -88,6 +88,8 @@ struct StashesTabView: View {
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
+                            .help("Drop stash")
+                            .accessibilityLabel("Drop stash")
                         }
                     }
                     .padding(.vertical, 4)
