@@ -49,7 +49,7 @@ struct BlameView: View {
             } else {
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 0) {
-                        ForEach(Array(blameLines.enumerated()), id: \.element.id) { index, line in
+                        ForEach(Array(blameLines.enumerated()), id: \.offset) { index, line in
                             BlameLineView(
                                 line: line,
                                 showCommitInfo: index == 0 || blameLines[index - 1].commitHash != line.commitHash

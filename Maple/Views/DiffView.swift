@@ -37,7 +37,7 @@ struct DiffView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Spacer()
-                    if !diffLines.isEmpty {
+                    if hasContent {
                         HStack(spacing: 8) {
                             Text("+\(additions)")
                                 .foregroundStyle(.green)
@@ -55,7 +55,7 @@ struct DiffView: View {
                 Divider()
             }
 
-            if diffLines.isEmpty {
+            if !hasContent {
                 VStack(spacing: 8) {
                     Image(systemName: fileName != nil ? "doc.text" : "arrow.left.circle")
                         .font(.title2)
@@ -76,7 +76,7 @@ struct DiffView: View {
     private var flatBody: some View {
         ScrollView(.vertical) {
             LazyVStack(spacing: 0) {
-                ForEach(diffLines) { line in
+                ForEach(Array(diffLines.enumerated()), id: \.offset) { _, line in
                     DiffLineView(line: line)
                 }
             }
@@ -167,12 +167,24 @@ struct DiffView: View {
         return out
     }
 
-    private var additions: Int {
-        diffLines.filter { $0.type == .addition }.count
+    /// True when there is a diff to show. Derived from the structured `diffFile`
+    /// when present so callers don't have to also materialize the flattened line
+    /// array just to answer "is this empty".
+    private var hasContent: Bool {
+        if let diffFile { return diffFile.hunks.contains { !$0.lines.isEmpty } }
+        return !diffLines.isEmpty
     }
 
-    private var deletions: Int {
-        diffLines.filter { $0.type == .deletion }.count
+    private var additions: Int { countLines(ofType: .addition) }
+    private var deletions: Int { countLines(ofType: .deletion) }
+
+    private func countLines(ofType type: DiffLine.LineType) -> Int {
+        if let diffFile {
+            return diffFile.hunks.reduce(0) { running, hunk in
+                running + hunk.lines.reduce(0) { $1.type == type ? $0 + 1 : $0 }
+            }
+        }
+        return diffLines.reduce(0) { $1.type == type ? $0 + 1 : $0 }
     }
 }
 

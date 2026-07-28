@@ -256,8 +256,7 @@ nonisolated struct DiffFile: Identifiable, Sendable {
     }
 }
 
-struct BlameLine: Identifiable, Sendable {
-    let id = UUID()
+struct BlameLine: Sendable {
     let lineNumber: Int
     let content: String
     let commitHash: String
@@ -277,8 +276,7 @@ struct BlameLine: Identifiable, Sendable {
     }
 }
 
-nonisolated struct DiffLine: Identifiable, Sendable {
-    let id = UUID()
+nonisolated struct DiffLine: Sendable {
     let content: String
     let type: LineType
     let oldLineNumber: Int?

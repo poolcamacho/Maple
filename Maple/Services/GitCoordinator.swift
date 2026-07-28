@@ -222,9 +222,11 @@ final class GitCoordinator {
                 state.currentDiffLines = try await git.diffForUntrackedFile(file.path, in: path)
                 state.currentDiffFile = nil
             } else {
-                let diffFile = try await git.diffFile(for: file.path, staged: file.isStaged, in: path)
-                state.currentDiffFile = diffFile
-                state.currentDiffLines = diffFile?.flattened ?? []
+                // Tracked files render from the structured `currentDiffFile`, so we
+                // do not also materialize the flattened line array (it would double
+                // the memory of a large diff for no benefit).
+                state.currentDiffFile = try await git.diffFile(for: file.path, staged: file.isStaged, in: path)
+                state.currentDiffLines = []
             }
         } catch {
             state.currentDiffLines = []
