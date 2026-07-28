@@ -16,3 +16,7 @@ Package.resolved
 
 # AppCode
 .idea/
+
+# Local working docs (planning/audit notes, not part of the repo).
+# Keep docs/screenshots/ (referenced by the README).
+/docs/*.md
