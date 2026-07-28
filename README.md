@@ -30,7 +30,8 @@ Most Git GUIs on macOS are Electron based, locked behind a subscription, or over
 - **Merge and rebase with conflict UX.** Detects `UU`, `AA`, `DD` automatically, shows an operation banner with Abort / Continue / Skip, and lets you resolve per file with Use Ours or Use Theirs.
 - **Branch management.** Local and remote branches, checkout (including remote to local tracking), create, rename, delete.
 - **Stash support.** Save, pop, apply, drop with custom messages.
-- **Auto refresh.** FSEvents watcher on `.git/` picks up changes made outside the app.
+- **Search.** Filter the active tab live: changes by path, commits by message / author / SHA, branches, and stashes.
+- **Auto refresh.** A file-system watcher on the repository's git directory (refs, `HEAD`, index) picks up changes made outside the app, including in worktrees and submodules.
 - **Adaptive layout.** The toolbar, sidebar, and panels collapse gracefully from a wide desktop down to a compact laptop window.
 
 ## Screenshots
@@ -83,7 +84,7 @@ Models/     Pure Sendable data (AppState, GitModels, StashModels)
 Services/   GitService (actor, runs git via Process),
             GitCoordinator (@MainActor, orchestration),
             command extensions, CommitGraphBuilder,
-            ConflictParser, FileWatcher
+            DiffParser, StatusParser, ConflictParser, FileWatcher
 Views/      One file per view, all async work through the coordinator
 Utils/      FolderPicker, DateExtensions
 ```
@@ -97,7 +98,7 @@ Utils/      FolderPicker, DateExtensions
 - [x] Commit, push, pull, fetch
 - [x] Branch create, checkout, delete, rename
 - [x] Stash save, pop, apply, drop
-- [x] Auto refresh via FSEvents
+- [x] Auto refresh via a git-directory watcher (worktree and submodule aware)
 - [x] Responsive layout with adaptive breakpoints
 - [x] Separated architecture (Models / Services / Views / Utils)
 - [x] Blame view with per line author, hash, date
@@ -106,17 +107,19 @@ Utils/      FolderPicker, DateExtensions
 - [x] Interactive staging - hunk level (select hunks with checkboxes, stage or unstage)
 - [x] Interactive staging - line level (pick individual `+` / `-` lines within a hunk)
 - [x] `Cmd+S` stages / unstages the current selection
+- [x] Search filtering across changes, commits, branches, and stashes
+- [x] Confirmation prompts before destructive actions (delete branch, drop stash, abort)
+- [x] Signed and notarized `.dmg` releases via GitHub Actions
+- [x] Unit and integration test suite running in CI
 
 ### Next
 
 - [ ] Tag management (create, list, delete)
-- [ ] Search filtering (commits, files)
 - [ ] Clone from URL
 - [ ] Remote management (add, remove, configure)
 - [ ] Keyboard shortcuts (`Cmd+Enter` commit, command palette)
 - [ ] Persist open repositories between sessions
 - [ ] Settings and preferences
-- [ ] Signed and notarized releases
 
 ## Contributing
 
