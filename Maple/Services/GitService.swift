@@ -139,19 +139,29 @@ actor GitService {
         return devNullFD
     }
 
+    /// Waits for `process` to exit, or terminates it after `timeout`. Returns
+    /// true if it exited on its own, false if the timeout fired. Uses the
+    /// termination handler plus a dispatch timer instead of a polling loop, so no
+    /// pool thread is parked for the command's lifetime and there is no 50ms
+    /// latency floor per git call.
     private func waitForProcess(_ process: Process, timeout: TimeInterval) async -> Bool {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let deadline = DispatchTime.now() + timeout
-                while process.isRunning {
-                    if DispatchTime.now() >= deadline {
-                        process.terminate()
-                        continuation.resume(returning: false)
-                        return
-                    }
-                    Thread.sleep(forTimeInterval: 0.05)
-                }
+        let resume = ResumeOnce()
+        return await withCheckedContinuation { continuation in
+            process.terminationHandler = { _ in
+                if resume.claim() { continuation.resume(returning: true) }
+            }
+
+            // If the process already exited before the handler was installed, the
+            // handler may never fire; cover that case explicitly.
+            if !process.isRunning, resume.claim() {
                 continuation.resume(returning: true)
+            }
+
+            DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + timeout) {
+                if resume.claim() {
+                    process.terminate()
+                    continuation.resume(returning: false)
+                }
             }
         }
     }
@@ -487,6 +497,24 @@ actor GitService {
 
     func unstageAll(in directory: String) async throws {
         _ = try await run(["reset", "HEAD"], in: directory)
+    }
+}
+
+// MARK: - Concurrency helpers
+
+/// One-shot latch guarding a checked continuation against a double resume when
+/// two callbacks (process exit and timeout) race. `claim()` returns true to
+/// exactly one caller.
+private nonisolated final class ResumeOnce: @unchecked Sendable {
+    private let lock = NSLock()
+    private var claimed = false
+
+    func claim() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if claimed { return false }
+        claimed = true
+        return true
     }
 }
 
