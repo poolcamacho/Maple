@@ -24,6 +24,12 @@ opt_in_rules:
   - force_unwrapping
   - redundant_nil_coalescing
   - sorted_first_last
+
+# `unused_import` needs type-checker output, so it only runs under
+# `swiftlint analyze` (not the `swiftlint lint` CI job). Declaring it here
+# keeps it available for analyze runs without emitting a config warning that
+# `--strict` would turn into a lint failure.
+analyzer_rules:
   - unused_import
 
 line_length:

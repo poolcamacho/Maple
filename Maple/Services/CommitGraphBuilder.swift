@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct CommitGraphLayout: Sendable {
+nonisolated struct CommitGraphLayout: Sendable {
     let nodes: [Node]
     let edges: [Edge]
     let laneCount: Int
@@ -33,7 +33,7 @@ struct CommitGraphLayout: Sendable {
     }
 }
 
-enum CommitGraphBuilder {
+nonisolated enum CommitGraphBuilder {
     /// Builds a lane/edge layout for commits assumed to be in reverse chronological
     /// order (newest first). Each commit's parents are resolved by hash; parents that
     /// are not present in `commits` (e.g. beyond `maxCount`) are dropped.
@@ -67,7 +67,7 @@ enum CommitGraphBuilder {
             if let claimedLane {
                 lane = claimedLane
             } else if let freeLane = activeLanes.firstIndex(of: nil) {
-                // Root or tip with no descendant in view — pick any free lane.
+                // Root or tip with no descendant in view - pick any free lane.
                 lane = freeLane
             } else {
                 lane = activeLanes.count

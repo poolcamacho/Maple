@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum ConflictSide: Sendable {
+nonisolated enum ConflictSide: Sendable {
     case normal
     case ours
     case theirs
@@ -18,12 +18,12 @@ enum ConflictSide: Sendable {
     case markerDivider
 }
 
-struct ConflictLine: Sendable {
+nonisolated struct ConflictLine: Sendable {
     let content: String
     let side: ConflictSide
 }
 
-enum ConflictParser {
+nonisolated enum ConflictParser {
     static func parse(_ source: String) -> [ConflictLine] {
         var result: [ConflictLine] = []
         var side: ConflictSide = .normal

@@ -104,7 +104,7 @@ struct GitBranch: Identifiable, Hashable, Sendable {
 /// A contiguous run of diff lines under a single `@@ ... @@` hunk header.
 /// Carries the original header text so patches can be reconstructed without
 /// re-parsing line numbers into the same format git expects.
-struct DiffHunk: Identifiable, Sendable {
+nonisolated struct DiffHunk: Identifiable, Sendable {
     let id = UUID()
     let header: String
     let oldStart: Int
@@ -232,7 +232,7 @@ nonisolated struct DiffFile: Identifiable, Sendable {
             result.oldCount += 1
             result.newCount += 1
         case .addition:
-            // Unselected additions are dropped entirely — they don't exist in
+            // Unselected additions are dropped entirely - they don't exist in
             // the old side and we don't want them in the new side either.
             guard isSelected else { return }
             result.body.append("+" + line.content)
@@ -277,7 +277,7 @@ struct BlameLine: Identifiable, Sendable {
     }
 }
 
-struct DiffLine: Identifiable, Sendable {
+nonisolated struct DiffLine: Identifiable, Sendable {
     let id = UUID()
     let content: String
     let type: LineType

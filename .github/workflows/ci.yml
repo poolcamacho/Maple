@@ -49,6 +49,28 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             analyze
 
+  test:
+    name: Unit Tests
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Maple.xcodeproj \
+            -scheme Maple \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -only-testing:MapleTests \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
   lint:
     name: SwiftLint
     runs-on: macos-26
