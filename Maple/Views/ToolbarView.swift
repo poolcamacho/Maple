@@ -128,6 +128,7 @@ struct ToolbarView: View {
                     TextField("Search...", text: $state.searchText)
                         .textFieldStyle(.plain)
                         .frame(minWidth: 50, maxWidth: isCompact ? 110 : 180)
+                        .accessibilityIdentifier("toolbar.search")
                 }
                 .padding(.horizontal, 6)
                 .padding(.vertical, 5)

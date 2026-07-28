@@ -34,7 +34,7 @@ struct StashesTabView: View {
 
     @ViewBuilder
     private var content: some View {
-        if state.stashes.isEmpty {
+        if state.filteredStashes.isEmpty {
             VStack(spacing: 8) {
                 Image(systemName: "tray")
                     .font(.system(size: 48))
@@ -49,7 +49,7 @@ struct StashesTabView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             List {
-                ForEach(state.stashes) { entry in
+                ForEach(state.filteredStashes) { entry in
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(entry.message)

@@ -14,11 +14,11 @@ struct StagingAreaView: View {
     @State private var activeSection: String = "unstaged"
 
     private var stagedFiles: [GitFileChange] {
-        state.fileChanges.filter { $0.isStaged }
+        state.filteredFileChanges.filter { $0.isStaged }
     }
 
     private var unstagedFiles: [GitFileChange] {
-        state.fileChanges.filter { !$0.isStaged }
+        state.filteredFileChanges.filter { !$0.isStaged }
     }
 
     var body: some View {

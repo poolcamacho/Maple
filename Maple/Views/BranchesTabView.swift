@@ -15,8 +15,8 @@ struct BranchesTabView: View {
 
     private var isCompact: Bool { availableWidth < 500 }
 
-    private var localBranches: [GitBranch] { state.branches.filter { !$0.isRemote } }
-    private var remoteBranches: [GitBranch] { state.branches.filter { $0.isRemote } }
+    private var localBranches: [GitBranch] { state.filteredBranches.filter { !$0.isRemote } }
+    private var remoteBranches: [GitBranch] { state.filteredBranches.filter { $0.isRemote } }
 
     var body: some View {
         Group {

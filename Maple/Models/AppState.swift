@@ -67,6 +67,43 @@ final class AppState {
         selectedRepository?.path
     }
 
+    // MARK: - Search filtering
+
+    /// The toolbar search field filters the active tab's list. An empty query
+    /// passes everything through. Matching is case- and diacritic-insensitive.
+    private var searchQuery: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var filteredFileChanges: [GitFileChange] {
+        let query = searchQuery
+        guard !query.isEmpty else { return fileChanges }
+        return fileChanges.filter { $0.path.localizedStandardContains(query) }
+    }
+
+    var filteredCommits: [GitCommit] {
+        let query = searchQuery
+        guard !query.isEmpty else { return commits }
+        return commits.filter {
+            $0.message.localizedStandardContains(query)
+                || $0.author.localizedStandardContains(query)
+                || $0.shortID.localizedStandardContains(query)
+                || $0.id.lowercased().hasPrefix(query.lowercased())
+        }
+    }
+
+    var filteredBranches: [GitBranch] {
+        let query = searchQuery
+        guard !query.isEmpty else { return branches }
+        return branches.filter { $0.name.localizedStandardContains(query) }
+    }
+
+    var filteredStashes: [GitStashEntry] {
+        let query = searchQuery
+        guard !query.isEmpty else { return stashes }
+        return stashes.filter { $0.message.localizedStandardContains(query) }
+    }
+
     // MARK: - Setup file watcher
 
     func setupWatcher() {

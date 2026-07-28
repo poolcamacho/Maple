@@ -18,8 +18,12 @@ struct CommitHistoryView: View {
     private let rowHeight: CGFloat = 30
     private let laneWidth: CGFloat = 14
 
+    private var visibleCommits: [GitCommit] {
+        state.filteredCommits
+    }
+
     private var layout: CommitGraphLayout {
-        CommitGraphBuilder.build(from: state.commits)
+        CommitGraphBuilder.build(from: visibleCommits)
     }
 
     private var graphWidth: CGFloat {
@@ -32,7 +36,7 @@ struct CommitHistoryView: View {
                 Text("Commit History")
                     .font(.headline)
                 Spacer()
-                Text("\(state.commits.count) commits")
+                Text("\(visibleCommits.count) commits")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -72,7 +76,7 @@ struct CommitHistoryView: View {
 
             let currentLayout = layout
             List(selection: $state.selectedCommit) {
-                ForEach(Array(state.commits.enumerated()), id: \.element.id) { index, commit in
+                ForEach(Array(visibleCommits.enumerated()), id: \.element.id) { index, commit in
                     CommitRow(
                         commit: commit,
                         rowIndex: index,
