@@ -71,27 +71,41 @@ actor GitService {
             throw GitError.processLaunchFailed(underlying: "git \(cmd): \(detail)")
         }
 
-        // If stdin was provided, write it now and close the write end so the
-        // child sees EOF and can exit. Writing before the drain starts is safe
-        // for small payloads (< pipe buffer); for larger ones we'd need to
-        // write in a detached task too, but interactive staging patches are
-        // well below that threshold in practice.
+        // Drain stdout and stderr immediately, before feeding stdin. macOS pipe
+        // buffers cap at ~64KB; writing a large stdin patch while the child is
+        // already blocked writing its own output would deadlock both sides.
+        // Draining from the start keeps the child's output flowing the whole time.
+        let drainTasks = startDraining(stdout: stdout, stderr: stderr)
+
+        // Feed stdin on its own task, concurrent with the drain, and always close
+        // the write end so the child sees EOF (even if the write itself fails).
+        let stdinTask: Task<Void, Never>?
         if let stdinPipe, let stdin {
-            let handle = stdinPipe.fileHandleForWriting
-            if let data = stdin.data(using: .utf8) {
-                try? handle.write(contentsOf: data)
+            stdinTask = Task.detached {
+                let handle = stdinPipe.fileHandleForWriting
+                if let data = stdin.data(using: .utf8) {
+                    try? handle.write(contentsOf: data)
+                }
+                try? handle.close()
             }
-            try? handle.close()
+        } else {
+            stdinTask = nil
         }
 
-        // Start draining BEFORE waiting on the process. macOS pipe buffers cap at
-        // ~64KB; if git produces more output than that and nothing is reading,
-        // git blocks on write, the process never exits, and our timeout fires.
-        // The read tasks must be live for the whole lifetime of the child.
-        let drainTasks = startDraining(stdout: stdout, stderr: stderr)
-        let completed = await waitForProcess(process, timeout: timeout)
+        // Wait for exit or timeout, propagating Swift task cancellation to the
+        // child so a cancelled load does not leave a git process running.
+        let completed = await withTaskCancellationHandler {
+            await waitForProcess(process, timeout: timeout)
+        } onCancel: {
+            process.terminate()
+        }
+
+        _ = await stdinTask?.value
         let (outData, errData) = await awaitDrain(drainTasks, stdout: stdout, stderr: stderr)
 
+        if Task.isCancelled {
+            throw CancellationError()
+        }
         guard completed else {
             throw GitError.timedOut(command: arguments.joined(separator: " "), seconds: Int(timeout))
         }
