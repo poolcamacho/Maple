@@ -43,13 +43,30 @@ Most Git GUIs on macOS are Electron based, locked behind a subscription, or over
 
 ![Branches tab with local and remote branches](docs/screenshots/branches.png)
 
+## Install
+
+1. Grab the latest signed `.dmg` from [Releases](https://github.com/poolcamacho/Maple/releases/latest).
+2. Open the disk image and drag `Maple.app` into `Applications`.
+3. Launch from Launchpad.
+
+The `.dmg` is signed with a Developer ID Application certificate and notarized by Apple, so macOS Gatekeeper will open it without quarantine workarounds.
+
+A Homebrew Cask is planned — once live:
+
+```bash
+brew install --cask maple
+```
+
 ## Requirements
 
 - macOS 14.0+ (Apple Silicon recommended, Intel supported)
-- Xcode 26+ (Swift 6.3 toolchain; required for `isolated deinit`)
 - Git installed (ships with Xcode Command Line Tools)
 
-## Getting started
+## Building from source
+
+If you prefer to build yourself instead of downloading the release:
+
+- Xcode 26+ (Swift 6.3 toolchain; required for `isolated deinit`)
 
 ```bash
 git clone https://github.com/poolcamacho/Maple.git

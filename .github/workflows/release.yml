@@ -17,45 +17,158 @@ env:
 
 jobs:
   build-release:
-    name: Build unsigned .app
+    name: Build signed + notarized .dmg
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v6
 
-      - name: Build
+      # ------------------------------------------------------------------
+      # Secrets this workflow expects (configure in repo Settings → Secrets):
+      #
+      #   DEVELOPER_ID_CERT_P12         base64 of the .p12 Developer ID
+      #                                 Application certificate (exported
+      #                                 from Keychain Access).
+      #   DEVELOPER_ID_CERT_PASSWORD    password used when the .p12 was
+      #                                 exported.
+      #   APPLE_ID                      Apple ID email tied to the
+      #                                 Developer Program account.
+      #   APPLE_TEAM_ID                 10-character team ID from
+      #                                 developer.apple.com → Membership.
+      #   APPLE_APP_SPECIFIC_PASSWORD   app-specific password generated at
+      #                                 appleid.apple.com → Security.
+      #
+      # Until every secret exists, the workflow will fail at the import
+      # step — which is the signal to finish the Apple Developer setup.
+      # ------------------------------------------------------------------
+
+      - name: Import Developer ID certificate into temporary keychain
+        env:
+          CERT_P12_BASE64: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/cert.p12"
+
+          echo "$CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" \
+            -P "$CERT_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | xargs)
+
+          rm "$CERT_PATH"
+
+      - name: Archive
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -o pipefail
           xcodebuild \
             -project Maple.xcodeproj \
             -scheme Maple \
             -configuration Release \
-            -destination 'platform=macOS' \
-            -derivedDataPath build \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            build
+            -destination 'generic/platform=macOS' \
+            -archivePath build/Maple.xcarchive \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            archive
 
-      - name: Package .app into zip
+      - name: Export signed .app
         run: |
-          cd build/Build/Products/Release
-          ditto -c -k --sequesterRsrc --keepParent Maple.app Maple.zip
-          mv Maple.zip "$GITHUB_WORKSPACE/Maple-${GITHUB_REF_NAME:-dev}.zip"
+          set -o pipefail
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/Maple.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist .github/workflows/ExportOptions.plist
+
+      - name: Create .dmg
+        run: |
+          set -euo pipefail
+          APP_PATH="build/export/Maple.app"
+          DMG_NAME="Maple-${GITHUB_REF_NAME:-dev}.dmg"
+
+          # create-dmg ships with brew on the macos runners; install only
+          # if it's missing to keep repeat runs fast.
+          if ! command -v create-dmg >/dev/null 2>&1; then
+            brew install create-dmg
+          fi
+
+          create-dmg \
+            --volname "Maple" \
+            --window-size 540 360 \
+            --icon-size 96 \
+            --icon "Maple.app" 140 180 \
+            --app-drop-link 400 180 \
+            --no-internet-enable \
+            "$GITHUB_WORKSPACE/$DMG_NAME" \
+            "$APP_PATH"
+
+      - name: Notarize .dmg
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          set -euo pipefail
+          DMG_PATH="$GITHUB_WORKSPACE/Maple-${GITHUB_REF_NAME:-dev}.dmg"
+
+          xcrun notarytool submit "$DMG_PATH" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --wait
+
+      - name: Staple notarization ticket
+        run: |
+          set -euo pipefail
+          DMG_PATH="$GITHUB_WORKSPACE/Maple-${GITHUB_REF_NAME:-dev}.dmg"
+          xcrun stapler staple "$DMG_PATH"
+          xcrun stapler validate "$DMG_PATH"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: Maple-${{ github.ref_name || 'dev' }}
-          path: Maple-*.zip
+          path: Maple-*.dmg
 
       - name: Attach to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v3
         with:
-          files: Maple-*.zip
+          files: Maple-*.dmg
           generate_release_notes: true
           body: |
-            > **Note:** this build is unsigned. macOS may warn that the app
-            > is "damaged" or from an unidentified developer; remove the
-            > quarantine attribute with `xattr -cr /Applications/Maple.app`
-            > or build from source.
+            Signed with a Developer ID Application certificate and
+            notarized by Apple — macOS Gatekeeper will open the app
+            without quarantine workarounds.
+
+            ## Install
+
+            1. Download `Maple-${{ github.ref_name }}.dmg`
+            2. Open the .dmg and drag `Maple.app` into `Applications`
+            3. Launch from Launchpad
+
+            Or via Homebrew (once the cask lands):
+
+            ```
+            brew install --cask maple
+            ```
+
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/build.keychain-db" || true
