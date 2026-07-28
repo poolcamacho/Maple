@@ -597,10 +597,21 @@ enum GitError: LocalizedError {
     case processLaunchFailed(underlying: String)
     case timedOut(command: String, seconds: Int)
 
+    /// Classified failure kind for `.commandFailed`, letting the UI show an
+    /// actionable message. `.unknown` for anything unrecognized.
+    var failureKind: GitFailureKind {
+        guard case let .commandFailed(cmd, _, msg) = self else { return .unknown }
+        return GitFailureKind.classify(command: cmd, message: msg)
+    }
+
     var errorDescription: String? {
         switch self {
         case .commandFailed(let cmd, let code, let msg):
-            return "git \(cmd) failed (\(code)): \(msg)"
+            if let summary = GitFailureKind.classify(command: cmd, message: msg).summary {
+                return summary
+            }
+            let detail = msg.trimmingCharacters(in: .whitespacesAndNewlines)
+            return "git \(cmd) failed (\(code)): \(detail.isEmpty ? "unknown error" : detail)"
         case .notARepository:
             return "Not a git repository"
         case .gitNotFound(let path):
