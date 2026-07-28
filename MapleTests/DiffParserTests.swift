@@ -165,4 +165,22 @@ struct DiffParserTests {
         let files = DiffParser.parseFiles("")
         #expect(files.isEmpty)
     }
+
+    private static let binaryFile = """
+    diff --git a/logo.png b/logo.png
+    index 1234567..89abcde 100644
+    Binary files a/logo.png and b/logo.png differ
+    """
+
+    @Test func detectsBinaryFile() {
+        let files = DiffParser.parseFiles(Self.binaryFile)
+        #expect(files.count == 1)
+        #expect(files[0].isBinary)
+        #expect(files[0].hunks.isEmpty)
+    }
+
+    @Test func textDiffIsNotMarkedBinary() {
+        let files = DiffParser.parseFiles(Self.singleFileSingleHunk)
+        #expect(files[0].isBinary == false)
+    }
 }

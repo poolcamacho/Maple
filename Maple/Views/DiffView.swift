@@ -55,7 +55,20 @@ struct DiffView: View {
                 Divider()
             }
 
-            if !hasContent {
+            if let file = diffFile, file.isBinary {
+                VStack(spacing: 8) {
+                    Image(systemName: "doc.badge.gearshape")
+                        .font(.title2)
+                        .foregroundStyle(.tertiary)
+                    Text("Binary file")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("Changed, but there is no text diff to show.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if !hasContent {
                 VStack(spacing: 8) {
                     Image(systemName: fileName != nil ? "doc.text" : "arrow.left.circle")
                         .font(.title2)

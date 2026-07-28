@@ -138,11 +138,14 @@ nonisolated struct DiffFile: Identifiable, Sendable {
     let path: String?
     let preamble: [String]
     let hunks: [DiffHunk]
+    /// True when git reported a binary difference (no textual hunks to show).
+    let isBinary: Bool
 
-    nonisolated init(path: String?, preamble: [String], hunks: [DiffHunk]) {
+    nonisolated init(path: String?, preamble: [String], hunks: [DiffHunk], isBinary: Bool = false) {
         self.path = path
         self.preamble = preamble
         self.hunks = hunks
+        self.isBinary = isBinary
     }
 
     /// Flattened view for rendering; mirrors the old `[DiffLine]` shape

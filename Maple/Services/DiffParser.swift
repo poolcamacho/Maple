@@ -73,6 +73,7 @@ nonisolated enum DiffParser {
         var files: [DiffFile] = []
         var currentPreamble: [String] = []
         var currentPath: String?
+        var currentIsBinary = false
         var currentHunks: [DiffHunk] = []
         var hunkHeader: String?
         var hunkNumbers = HunkNumbers(oldStart: 0, oldCount: 0, newStart: 0, newCount: 0)
@@ -89,6 +90,8 @@ nonisolated enum DiffParser {
             } else if raw.hasPrefix("+++ ") {
                 currentPreamble.append(raw)
                 capturePath(from: raw)
+            } else if raw.hasPrefix("Binary files ") || raw.hasPrefix("GIT binary patch") {
+                currentIsBinary = true
             } else if raw.hasPrefix("@@") {
                 flushHunk()
                 startHunk(header: raw)
@@ -140,9 +143,15 @@ nonisolated enum DiffParser {
         mutating func flushFile() {
             flushHunk()
             guard !currentPreamble.isEmpty || !currentHunks.isEmpty else { return }
-            files.append(DiffFile(path: currentPath, preamble: currentPreamble, hunks: currentHunks))
+            files.append(DiffFile(
+                path: currentPath,
+                preamble: currentPreamble,
+                hunks: currentHunks,
+                isBinary: currentIsBinary
+            ))
             currentPreamble = []
             currentPath = nil
+            currentIsBinary = false
             currentHunks = []
         }
     }
