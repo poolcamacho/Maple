@@ -247,6 +247,47 @@ actor GitService {
         }
     }
 
+    // MARK: - Repository paths
+
+    /// Resolves the real on-disk git directories for a repo, correctly handling
+    /// worktrees and submodules where `.git` is a file and refs live in a shared
+    /// common dir separate from this checkout's git dir. Returns nil if the paths
+    /// cannot be resolved.
+    func repositoryPaths(in directory: String) async -> GitRepositoryPaths? {
+        async let topResult = try? run(["rev-parse", "--show-toplevel"], in: directory)
+        async let gitDirResult = try? run(["rev-parse", "--absolute-git-dir"], in: directory)
+        async let commonResult = try? run(["rev-parse", "--git-common-dir"], in: directory)
+
+        guard
+            let top = Self.trimmedNonEmpty(await topResult),
+            let gitDir = Self.trimmedNonEmpty(await gitDirResult),
+            let commonRaw = Self.trimmedNonEmpty(await commonResult)
+        else { return nil }
+
+        // --git-common-dir can be returned relative to the working directory;
+        // absolutize it so the watcher gets a usable path.
+        let commonDir: String
+        if (commonRaw as NSString).isAbsolutePath {
+            commonDir = (commonRaw as NSString).standardizingPath
+        } else {
+            commonDir = URL(fileURLWithPath: directory)
+                .appendingPathComponent(commonRaw)
+                .standardizedFileURL.path
+        }
+
+        return GitRepositoryPaths(
+            workTree: top,
+            gitDir: (gitDir as NSString).standardizingPath,
+            commonDir: commonDir
+        )
+    }
+
+    private static func trimmedNonEmpty(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else { return nil }
+        return trimmed
+    }
+
     // MARK: - Current branch
 
     func currentBranch(in directory: String) async throws -> String {
@@ -512,6 +553,21 @@ actor GitService {
     func unstageAll(in directory: String) async throws {
         _ = try await run(["reset", "HEAD"], in: directory)
     }
+}
+
+// MARK: - Repository paths
+
+/// The resolved on-disk locations of a git repository, accounting for worktrees
+/// and submodules.
+nonisolated struct GitRepositoryPaths: Sendable {
+    /// Working tree root (`git rev-parse --show-toplevel`).
+    let workTree: String
+    /// This checkout's git dir (`--absolute-git-dir`). Holds HEAD and the index,
+    /// which are per-worktree.
+    let gitDir: String
+    /// The shared common dir (`--git-common-dir`). Holds refs and packed-refs,
+    /// which are shared across worktrees. Equals `gitDir` for a normal repo.
+    let commonDir: String
 }
 
 // MARK: - Concurrency helpers

@@ -8,15 +8,18 @@
 import Foundation
 import Observation
 
-/// Watches key files inside a repo's `.git` directory and fires `onChange` on the
-/// main actor (debounced) when they change.
+/// Watches a repository's git directories and fires `onChange` on the main actor
+/// (debounced) when refs, HEAD or the index change.
 ///
-/// DispatchSource delivers its event handlers on a background queue, so all of the
-/// watching machinery lives in a `nonisolated` `Engine` synchronized on a private
-/// serial queue. Only the final `onChange` notification hops back to the main
-/// actor. Letting the handlers run on the main actor (the default under
-/// SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor) makes libdispatch abort with a queue
-/// assertion the moment an event fires off the main queue.
+/// Callers pass resolved paths (`git rev-parse --absolute-git-dir` and
+/// `--git-common-dir`) so this works for worktrees and submodules, where `.git`
+/// is a file and refs live in a shared common dir separate from this checkout's
+/// git dir. HEAD and the index are per-worktree (git dir); refs and packed-refs
+/// are shared (common dir).
+///
+/// DispatchSource delivers its event handlers on a background queue, so all of
+/// the watching machinery lives in a `nonisolated` `Engine` synchronized on a
+/// private serial queue. Only the final notification hops back to the main actor.
 @MainActor
 @Observable
 final class FileWatcher {
@@ -26,9 +29,9 @@ final class FileWatcher {
 
     private let engine = Engine()
 
-    /// Watch key paths inside a git repo for changes.
-    func watch(directory: String) {
-        engine.watch(directory: directory) { [weak self] in
+    /// Watch a repository given its resolved git dir and common dir.
+    func watch(gitDir: String, commonDir: String) {
+        engine.watch(gitDir: gitDir, commonDir: commonDir) { [weak self] in
             self?.onChange?()
         }
     }
@@ -55,8 +58,8 @@ private extension FileWatcher {
         private var debounceWorkItem: DispatchWorkItem?
         private let debounceInterval: TimeInterval = 0.5
 
-        func watch(directory: String, notify: @escaping @MainActor () -> Void) {
-            queue.async { [self] in start(directory: directory, notify: notify) }
+        func watch(gitDir: String, commonDir: String, notify: @escaping @MainActor () -> Void) {
+            queue.async { [self] in start(gitDir: gitDir, commonDir: commonDir, notify: notify) }
         }
 
         func stop() {
@@ -65,39 +68,41 @@ private extension FileWatcher {
 
         // MARK: - Queue-confined work
 
-        private func start(directory: String, notify: @escaping @MainActor () -> Void) {
+        private func start(gitDir: String, commonDir: String, notify: @escaping @MainActor () -> Void) {
             reset()
 
-            let gitDir = (directory as NSString).appendingPathComponent(".git")
-            let paths = [
+            // Refs and packed-refs are shared across worktrees (common dir); HEAD,
+            // the index and operation-state files (MERGE_HEAD, rebase-*) are
+            // per-worktree (git dir). Watching the git-dir directory itself catches
+            // index replacement (git writes index.lock then renames) and the
+            // transient state files appearing and disappearing.
+            let refsDir = commonDir as NSString
+            let stateDir = gitDir as NSString
+            let candidates = [
+                commonDir,
+                refsDir.appendingPathComponent("refs"),
+                refsDir.appendingPathComponent("refs/heads"),
+                refsDir.appendingPathComponent("refs/remotes"),
                 gitDir,
-                (gitDir as NSString).appendingPathComponent("refs"),
-                (gitDir as NSString).appendingPathComponent("refs/heads"),
-                (gitDir as NSString).appendingPathComponent("refs/remotes"),
+                stateDir.appendingPathComponent("index")
             ]
 
-            for path in paths {
-                addSource(path: path, eventMask: [.write, .rename, .delete, .link], notify: notify)
+            // Dedupe: for a normal (non-worktree) repo gitDir == commonDir, so the
+            // two sets overlap and we must not open two sources on the same path.
+            var seen = Set<String>()
+            for path in candidates where seen.insert(path).inserted {
+                addSource(path: path, notify: notify)
             }
-
-            // Stage/unstage writes .git/index without touching .git/refs, so we
-            // watch it directly to refresh the changes list.
-            let indexPath = (gitDir as NSString).appendingPathComponent("index")
-            addSource(path: indexPath, eventMask: [.write, .rename], notify: notify)
         }
 
-        private func addSource(
-            path: String,
-            eventMask: DispatchSource.FileSystemEvent,
-            notify: @escaping @MainActor () -> Void
-        ) {
+        private func addSource(path: String, notify: @escaping @MainActor () -> Void) {
             let fd = open(path, O_EVTONLY)
             guard fd >= 0 else { return }
             fileDescriptors.append(fd)
 
             let source = DispatchSource.makeFileSystemObjectSource(
                 fileDescriptor: fd,
-                eventMask: eventMask,
+                eventMask: [.write, .rename, .delete, .link],
                 queue: queue
             )
             source.setEventHandler { [weak self] in

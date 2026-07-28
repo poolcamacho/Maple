@@ -113,7 +113,14 @@ final class GitCoordinator {
     /// repository. Invoked whenever the sidebar selection changes.
     func selectRepository() async {
         guard let path = state.currentRepoPath else { return }
-        state.watcher.watch(directory: path)
+        // Resolve the real git dirs so the watcher follows refs/index correctly in
+        // worktrees and submodules; skip watching if they can't be resolved
+        // (manual refresh still works).
+        if let paths = await git.repositoryPaths(in: path) {
+            state.watcher.watch(gitDir: paths.gitDir, commonDir: paths.commonDir)
+        } else {
+            state.watcher.stop()
+        }
         await loadRepositoryData()
     }
 
