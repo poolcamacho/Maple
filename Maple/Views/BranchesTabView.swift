@@ -11,6 +11,7 @@ struct BranchesTabView: View {
     @Bindable var state: AppState
     let availableWidth: CGFloat
     @State private var selectedBranch: GitBranch?
+    @State private var branchPendingDeletion: GitBranch?
 
     private var isCompact: Bool { availableWidth < 500 }
 
@@ -18,16 +19,35 @@ struct BranchesTabView: View {
     private var remoteBranches: [GitBranch] { state.branches.filter { $0.isRemote } }
 
     var body: some View {
-        if isCompact {
-            branchList
-        } else {
-            HStack(spacing: 0) {
+        Group {
+            if isCompact {
                 branchList
-                    .frame(width: min(max(availableWidth * 0.4, 200), 350))
-                Divider()
-                branchDetail
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                HStack(spacing: 0) {
+                    branchList
+                        .frame(width: min(max(availableWidth * 0.4, 200), 350))
+                    Divider()
+                    branchDetail
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
+        }
+        .confirmationDialog(
+            "Delete branch?",
+            isPresented: Binding(
+                get: { branchPendingDeletion != nil },
+                set: { if !$0 { branchPendingDeletion = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: branchPendingDeletion
+        ) { branch in
+            Button("Delete", role: .destructive) {
+                Task { await state.coordinator.deleteLocalBranch(branch) }
+                branchPendingDeletion = nil
+            }
+            Button("Cancel", role: .cancel) { branchPendingDeletion = nil }
+        } message: { branch in
+            Text("This deletes the local branch \"\(branch.name)\". Git will refuse if it has unmerged commits.")
         }
     }
 
@@ -44,7 +64,7 @@ struct BranchesTabView: View {
                                 }
                                 Divider()
                                 Button("Delete", role: .destructive) {
-                                    Task { await state.coordinator.deleteLocalBranch(branch) }
+                                    branchPendingDeletion = branch
                                 }
                             } else {
                                 Text("Current branch")
@@ -102,7 +122,7 @@ struct BranchesTabView: View {
                         .buttonStyle(.borderedProminent)
 
                         Button("Delete", role: .destructive) {
-                            Task { await state.coordinator.deleteLocalBranch(branch) }
+                            branchPendingDeletion = branch
                         }
                         .buttonStyle(.bordered)
                     }

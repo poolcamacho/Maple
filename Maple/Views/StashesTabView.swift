@@ -9,8 +9,31 @@ import SwiftUI
 
 struct StashesTabView: View {
     @Bindable var state: AppState
+    @State private var stashPendingDrop: GitStashEntry?
 
     var body: some View {
+        content
+            .confirmationDialog(
+                "Drop stash?",
+                isPresented: Binding(
+                    get: { stashPendingDrop != nil },
+                    set: { if !$0 { stashPendingDrop = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: stashPendingDrop
+            ) { entry in
+                Button("Drop", role: .destructive) {
+                    Task { await state.coordinator.performStashDrop(index: entry.index) }
+                    stashPendingDrop = nil
+                }
+                Button("Cancel", role: .cancel) { stashPendingDrop = nil }
+            } message: { entry in
+                Text("This permanently discards the stash \"\(entry.message)\". It cannot be undone.")
+            }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         if state.stashes.isEmpty {
             VStack(spacing: 8) {
                 Image(systemName: "tray")
@@ -59,7 +82,7 @@ struct StashesTabView: View {
                             .controlSize(.small)
 
                             Button(role: .destructive) {
-                                Task { await state.coordinator.performStashDrop(index: entry.index) }
+                                stashPendingDrop = entry
                             } label: {
                                 Image(systemName: "trash")
                             }

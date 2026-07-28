@@ -11,6 +11,7 @@ import SwiftUI
 /// Offers Abort / Continue actions and surfaces how many conflicts remain.
 struct OperationBanner: View {
     @Bindable var state: AppState
+    @State private var showAbortConfirmation = false
 
     private var conflictCount: Int {
         state.fileChanges.filter { $0.status == .conflicted }.count
@@ -48,13 +49,7 @@ struct OperationBanner: View {
             Spacer()
 
             Button("Abort") {
-                Task {
-                    switch state.operationState {
-                    case .merging: await state.coordinator.abortMerge()
-                    case .rebasing: await state.coordinator.abortRebase()
-                    default: break
-                    }
-                }
+                showAbortConfirmation = true
             }
             .controlSize(.small)
             .disabled(state.operationInProgress)
@@ -85,6 +80,24 @@ struct OperationBanner: View {
         .background(accentColor.opacity(0.12))
         .overlay(alignment: .bottom) {
             Rectangle().fill(accentColor.opacity(0.4)).frame(height: 1)
+        }
+        .confirmationDialog(
+            "Abort \(state.operationState.label)?",
+            isPresented: $showAbortConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Abort", role: .destructive) {
+                Task {
+                    switch state.operationState {
+                    case .merging: await state.coordinator.abortMerge()
+                    case .rebasing: await state.coordinator.abortRebase()
+                    default: break
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This stops the operation and discards any conflict resolutions made so far.")
         }
     }
 
