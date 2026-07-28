@@ -264,55 +264,11 @@ actor GitService {
     // MARK: - Status (file changes)
 
     func status(in directory: String) async throws -> [GitFileChange] {
-        let output = try await run(["status", "--porcelain=v1"], in: directory)
-        var results: [GitFileChange] = []
-
-        for line in output.components(separatedBy: "\n") where line.count >= 3 {
-            let indexStatus = line[line.index(line.startIndex, offsetBy: 0)]
-            let workTreeStatus = line[line.index(line.startIndex, offsetBy: 1)]
-            let filePath = String(line[line.index(line.startIndex, offsetBy: 3)...])
-                .trimmingCharacters(in: .whitespaces)
-                // Porcelain encodes renames as "old -> new"; we only want the new path.
-                .components(separatedBy: " -> ").last ?? ""
-
-            if Self.isConflictCode(indexStatus, workTreeStatus) {
-                results.append(GitFileChange(path: filePath, status: .conflicted, isStaged: false))
-                continue
-            }
-
-            if indexStatus != " " && indexStatus != "?" {
-                let status = Self.parseFileStatus(indexStatus)
-                results.append(GitFileChange(path: filePath, status: status, isStaged: true))
-            }
-
-            if workTreeStatus != " " {
-                if workTreeStatus == "?" {
-                    results.append(GitFileChange(path: filePath, status: .untracked, isStaged: false))
-                } else {
-                    let status = Self.parseFileStatus(workTreeStatus)
-                    results.append(GitFileChange(path: filePath, status: status, isStaged: false))
-                }
-            }
-        }
-
-        return results
-    }
-
-    private static func isConflictCode(_ x: Character, _ y: Character) -> Bool {
-        if x == "U" || y == "U" { return true }
-        if x == "A" && y == "A" { return true }
-        if x == "D" && y == "D" { return true }
-        return false
-    }
-
-    private static func parseFileStatus(_ char: Character) -> GitFileChange.FileStatus {
-        switch char {
-        case "M": return .modified
-        case "A": return .added
-        case "D": return .deleted
-        case "R": return .renamed
-        default: return .modified
-        }
+        // porcelain=v2 -z is NUL-delimited and prints paths verbatim, so parsing
+        // is robust to spaces, unicode, newlines, quotes and " -> " in names.
+        // Parsing itself lives in the pure, unit-tested StatusParser.
+        let output = try await run(["status", "--porcelain=v2", "-z"], in: directory)
+        return StatusParser.parse(output)
     }
 
     // MARK: - Log (commit history)

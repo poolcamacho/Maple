@@ -41,7 +41,7 @@ struct GitCommit: Identifiable, Sendable {
     }
 }
 
-struct GitFileChange: Identifiable, Hashable, Sendable {
+nonisolated struct GitFileChange: Identifiable, Hashable, Sendable {
     let id: String
     let path: String
     let status: FileStatus
