@@ -25,7 +25,7 @@ Most Git GUIs on macOS are Electron based, locked behind a subscription, or over
 ## Features
 
 - **Real commit graph.** Lane assignment, curved edges per parent, merge nodes rendered as a ring so joins stay legible across busy histories.
-- **Interactive staging.** Tick a checkbox on any hunk header — or any individual `+` / `-` line — and stage only what you want. `Cmd+S` stages (or unstages) the current selection. Works in reverse too: view the staged diff and surgically peel changes back into the working tree.
+- **Interactive staging.** Tick a checkbox on any hunk header, or any individual `+` / `-` line, and stage only what you want. `Cmd+S` stages (or unstages) the current selection. Works in reverse too: view the staged diff and surgically peel changes back into the working tree.
 - **Diff viewer with Blame toggle.** Syntax coloured hunks, line numbers, and per line author / hash / date when Blame is on.
 - **Merge and rebase with conflict UX.** Detects `UU`, `AA`, `DD` automatically, shows an operation banner with Abort / Continue / Skip, and lets you resolve per file with Use Ours or Use Theirs.
 - **Branch management.** Local and remote branches, checkout (including remote to local tracking), create, rename, delete.
@@ -51,7 +51,7 @@ Most Git GUIs on macOS are Electron based, locked behind a subscription, or over
 
 The `.dmg` is signed with a Developer ID Application certificate and notarized by Apple, so macOS Gatekeeper will open it without quarantine workarounds.
 
-A Homebrew Cask is planned — once live:
+A Homebrew Cask is planned - once live:
 
 ```bash
 brew install --cask maple
@@ -103,8 +103,8 @@ Utils/      FolderPicker, DateExtensions
 - [x] Blame view with per line author, hash, date
 - [x] Commit graph with real branch topology
 - [x] Merge and rebase with conflict resolution UI
-- [x] Interactive staging — hunk level (select hunks with checkboxes, stage or unstage)
-- [x] Interactive staging — line level (pick individual `+` / `-` lines within a hunk)
+- [x] Interactive staging - hunk level (select hunks with checkboxes, stage or unstage)
+- [x] Interactive staging - line level (pick individual `+` / `-` lines within a hunk)
 - [x] `Cmd+S` stages / unstages the current selection
 
 ### Next

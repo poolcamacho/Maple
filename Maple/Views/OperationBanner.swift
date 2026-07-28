@@ -100,7 +100,7 @@ struct OperationBanner: View {
 
     private var conflictSummary: String {
         if conflictCount == 0 {
-            return "No conflicts remain — you can continue"
+            return "No conflicts remain, you can continue"
         }
         return "\(conflictCount) file\(conflictCount == 1 ? "" : "s") with conflicts to resolve"
     }

@@ -104,7 +104,7 @@ struct BlameLineView: View {
             .padding(.horizontal, 8)
             .frame(width: 220, alignment: .leading)
             .background(.quaternary.opacity(showCommitInfo ? 0.3 : 0.12))
-            .help(showCommitInfo ? "\(line.shortHash) — \(line.author)\n\(line.summary)" : "")
+            .help(showCommitInfo ? "\(line.shortHash) - \(line.author)\n\(line.summary)" : "")
 
             Text("\(line.lineNumber)")
                 .font(.system(size: 11, design: .monospaced))

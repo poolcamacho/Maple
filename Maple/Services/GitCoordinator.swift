@@ -357,7 +357,7 @@ final class GitCoordinator {
             refresh: .load,
             errorHandler: { [weak self] error in
                 guard let self else { return }
-                // git merge returns non-zero on conflict — refresh state so user sees conflicts
+                // git merge returns non-zero on conflict - refresh state so user sees conflicts
                 await self.loadRepositoryData()
                 if self.state.operationState.isInProgress {
                     self.state.errorMessage = "Merge has conflicts. Resolve them and click Continue."

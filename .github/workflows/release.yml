@@ -38,7 +38,7 @@ jobs:
       #                                 appleid.apple.com → Security.
       #
       # Until every secret exists, the workflow will fail at the import
-      # step — which is the signal to finish the Apple Developer setup.
+      # step - which is the signal to finish the Apple Developer setup.
       # ------------------------------------------------------------------
 
       - name: Import Developer ID certificate into temporary keychain
@@ -154,7 +154,7 @@ jobs:
           generate_release_notes: true
           body: |
             Signed with a Developer ID Application certificate and
-            notarized by Apple — macOS Gatekeeper will open the app
+            notarized by Apple - macOS Gatekeeper will open the app
             without quarantine workarounds.
 
             ## Install

@@ -67,7 +67,7 @@ actor GitService {
             logLaunchFailure(command: cmd, directory: directory, error: error)
             if stdinFD >= 0 { close(stdinFD) }
             let nsError = error as NSError
-            let detail = "\(nsError.domain) code=\(nsError.code) — \(nsError.localizedDescription)"
+            let detail = "\(nsError.domain) code=\(nsError.code) - \(nsError.localizedDescription)"
             throw GitError.processLaunchFailed(underlying: "git \(cmd): \(detail)")
         }
 
@@ -181,7 +181,7 @@ actor GitService {
 
     private func logLaunchFailure(command: String, directory: String, error: Error) {
         let nsError = error as NSError
-        let detail = "\(nsError.domain) code=\(nsError.code) — \(nsError.localizedDescription)"
+        let detail = "\(nsError.domain) code=\(nsError.code) - \(nsError.localizedDescription)"
         FileHandle.standardError.write(Data("[Maple] process.run() failed for `git \(command)` in \(directory): \(detail)\n".utf8))
     }
 
