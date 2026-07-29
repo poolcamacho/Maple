@@ -105,6 +105,7 @@ struct StagingAreaView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
+                        .keyboardShortcut(.return, modifiers: .command)
                         .disabled((stagedFiles.isEmpty && !amendMode) || commitMessage.isEmpty || state.operationInProgress)
                     }
                 }
