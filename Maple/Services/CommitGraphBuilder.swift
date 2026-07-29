@@ -11,6 +11,17 @@ nonisolated struct CommitGraphLayout: Sendable {
     let nodes: [Node]
     let edges: [Edge]
     let laneCount: Int
+    private let nodesByRow: [Int: Node]
+
+    init(nodes: [Node], edges: [Edge], laneCount: Int) {
+        self.nodes = nodes
+        self.edges = edges
+        self.laneCount = laneCount
+        self.nodesByRow = Dictionary(
+            nodes.map { ($0.rowIndex, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+    }
 
     struct Node: Sendable, Identifiable {
         let id: String
@@ -28,8 +39,7 @@ nonisolated struct CommitGraphLayout: Sendable {
     }
 
     func node(atRow row: Int) -> Node? {
-        // Linear scan is fine for <=200 commits; binary search isn't worth it.
-        nodes.first(where: { $0.rowIndex == row })
+        nodesByRow[row]
     }
 }
 

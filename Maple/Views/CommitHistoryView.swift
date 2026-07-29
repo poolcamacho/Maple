@@ -22,21 +22,19 @@ struct CommitHistoryView: View {
         state.filteredCommits
     }
 
-    private var layout: CommitGraphLayout {
-        CommitGraphBuilder.build(from: visibleCommits)
-    }
-
-    private var graphWidth: CGFloat {
-        max(40, CGFloat(layout.laneCount) * laneWidth + 12)
-    }
-
     var body: some View {
+        // Build the graph layout once per render (it was previously rebuilt two
+        // to three times: for the header width, the column header, and each row).
+        let commits = visibleCommits
+        let currentLayout = CommitGraphBuilder.build(from: commits)
+        let graphW = max(40, CGFloat(currentLayout.laneCount) * laneWidth + 12)
+
         VStack(spacing: 0) {
             HStack {
                 Text("Commit History")
                     .font(.headline)
                 Spacer()
-                Text("\(visibleCommits.count) commits")
+                Text("\(commits.count) commits")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -48,7 +46,7 @@ struct CommitHistoryView: View {
 
             HStack(spacing: 0) {
                 Text("Graph")
-                    .frame(width: graphWidth, alignment: .leading)
+                    .frame(width: graphW, alignment: .leading)
                     .padding(.leading, 12)
                 Text("Message")
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -74,14 +72,13 @@ struct CommitHistoryView: View {
 
             Divider()
 
-            let currentLayout = layout
             List(selection: $state.selectedCommit) {
-                ForEach(Array(visibleCommits.enumerated()), id: \.element.id) { index, commit in
+                ForEach(Array(commits.enumerated()), id: \.element.id) { index, commit in
                     CommitRow(
                         commit: commit,
                         rowIndex: index,
                         layout: currentLayout,
-                        graphWidth: graphWidth,
+                        graphWidth: graphW,
                         laneWidth: laneWidth,
                         rowHeight: rowHeight,
                         showAuthor: showAuthor,
