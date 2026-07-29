@@ -11,9 +11,38 @@ import SwiftUI
 final class GitCoordinator {
     private let state: AppState
     private var git: GitService { state.git }
+    private let recentRepos = RecentRepositoriesStore()
 
     init(state: AppState) {
         self.state = state
+    }
+
+    // MARK: - Persistence
+
+    /// Restores the repositories that were open last session and re-selects the
+    /// one that was active. Invalid or missing paths are dropped. Call once on
+    /// launch.
+    func restorePersistedRepositories() async {
+        let paths = recentRepos.loadPaths()
+        guard !paths.isEmpty else { return }
+
+        var restored: [GitRepository] = []
+        for path in paths {
+            guard await git.validateRepository(at: path) == nil else { continue }
+            let name = await git.repositoryName(at: path)
+            let branch = (try? await git.currentBranch(in: path)) ?? "unknown"
+            restored.append(GitRepository(name: name, path: path, currentBranch: branch))
+        }
+
+        state.repositories = restored
+        recentRepos.save(paths: restored.map(\.path)) // prune paths that no longer resolve
+
+        // Re-selecting drives the watcher + data load through the selection
+        // onChange (see ContentView).
+        if let selectedPath = recentRepos.loadSelectedPath(),
+           let repo = restored.first(where: { $0.path == selectedPath }) {
+            state.selectedRepository = repo
+        }
     }
 
     // MARK: - Operation helpers
@@ -97,6 +126,7 @@ final class GitCoordinator {
         if !state.repositories.contains(where: { $0.path == path }) {
             state.repositories.append(repo)
         }
+        recentRepos.save(paths: state.repositories.map(\.path))
         // Setting the selection drives the watcher + data load through
         // `selectRepository()` (see ContentView's onChange). Opening the folder
         // that is already selected won't retrigger, so load explicitly too.
@@ -113,6 +143,7 @@ final class GitCoordinator {
     /// repository. Invoked whenever the sidebar selection changes.
     func selectRepository() async {
         guard let path = state.currentRepoPath else { return }
+        recentRepos.save(selectedPath: path)
         // Resolve the real git dirs so the watcher follows refs/index correctly in
         // worktrees and submodules; skip watching if they can't be resolved
         // (manual refresh still works).

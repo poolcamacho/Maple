@@ -54,6 +54,7 @@ struct ContentView: View {
         }
         .onAppear {
             state.setupWatcher()
+            Task { await state.coordinator.restorePersistedRepositories() }
         }
         .confirmationDialog(
             "Set upstream and push?",
