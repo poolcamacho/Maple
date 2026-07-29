@@ -13,51 +13,41 @@ struct TagsTabView: View {
     @State private var tagPendingDeletion: GitTag?
 
     var body: some View {
-        content
-            .sheet(isPresented: $showCreate) {
-                NewTagDialog(state: state)
+        VStack(spacing: 0) {
+            header
+            Divider()
+            tagList
+        }
+    }
+
+    // Sheet lives on the header and the delete confirmation on the list, so the
+    // two presentations are on separate subviews. Attaching both to the same
+    // view makes macOS briefly flash the confirmation dialog before the sheet.
+    private var header: some View {
+        HStack {
+            Text("Tags")
+                .font(.headline)
+            Spacer()
+            Button {
+                showCreate = true
+            } label: {
+                Label("New Tag", systemImage: "plus")
             }
-            .confirmationDialog(
-                "Delete tag?",
-                isPresented: Binding(
-                    get: { tagPendingDeletion != nil },
-                    set: { if !$0 { tagPendingDeletion = nil } }
-                ),
-                titleVisibility: .visible,
-                presenting: tagPendingDeletion
-            ) { tag in
-                Button("Delete", role: .destructive) {
-                    Task { await state.coordinator.deleteTag(tag) }
-                    tagPendingDeletion = nil
-                }
-                Button("Cancel", role: .cancel) { tagPendingDeletion = nil }
-            } message: { tag in
-                Text("This deletes the local tag \"\(tag.name)\".")
-            }
+            .controlSize(.small)
+            .disabled(state.selectedRepository == nil)
+            .accessibilityIdentifier("tags.new")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.bar)
+        .sheet(isPresented: $showCreate) {
+            NewTagDialog(state: state)
+        }
     }
 
     @ViewBuilder
-    private var content: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Tags")
-                    .font(.headline)
-                Spacer()
-                Button {
-                    showCreate = true
-                } label: {
-                    Label("New Tag", systemImage: "plus")
-                }
-                .controlSize(.small)
-                .disabled(state.selectedRepository == nil)
-                .accessibilityIdentifier("tags.new")
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(.bar)
-
-            Divider()
-
+    private var tagList: some View {
+        Group {
             if state.filteredTags.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "tag")
@@ -86,6 +76,23 @@ struct TagsTabView: View {
                 }
                 .listStyle(.inset)
             }
+        }
+        .confirmationDialog(
+            "Delete tag?",
+            isPresented: Binding(
+                get: { tagPendingDeletion != nil },
+                set: { if !$0 { tagPendingDeletion = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: tagPendingDeletion
+        ) { tag in
+            Button("Delete", role: .destructive) {
+                Task { await state.coordinator.deleteTag(tag) }
+                tagPendingDeletion = nil
+            }
+            Button("Cancel", role: .cancel) { tagPendingDeletion = nil }
+        } message: { tag in
+            Text("This deletes the local tag \"\(tag.name)\".")
         }
     }
 }
