@@ -55,6 +55,22 @@ struct ContentView: View {
         .onAppear {
             state.setupWatcher()
         }
+        .confirmationDialog(
+            "Set upstream and push?",
+            isPresented: Binding(
+                get: { state.pendingUpstreamPush != nil },
+                set: { if !$0 { state.pendingUpstreamPush = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: state.pendingUpstreamPush
+        ) { pending in
+            Button("Push and set upstream") {
+                Task { await state.coordinator.pushSettingUpstream(remote: pending.remote, branch: pending.branch) }
+            }
+            Button("Cancel", role: .cancel) { state.pendingUpstreamPush = nil }
+        } message: { pending in
+            Text("Branch \"\(pending.branch)\" has no upstream yet. Push it to \(pending.remote) and track it?")
+        }
         .sheet(isPresented: $showNewBranch) {
             NewBranchDialog(state: state)
         }

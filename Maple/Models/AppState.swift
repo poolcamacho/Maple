@@ -47,6 +47,15 @@ final class AppState {
     var searchText: String = ""
     var currentTab: DetailTab = .changes
 
+    /// Set when a push is requested on a branch with no upstream; drives the
+    /// "set upstream and push" confirmation.
+    var pendingUpstreamPush: PendingUpstreamPush?
+
+    struct PendingUpstreamPush: Equatable, Sendable {
+        let remote: String
+        let branch: String
+    }
+
     // Initialized in init() because @Observable breaks lazy
     private(set) var coordinator: GitCoordinator!
 

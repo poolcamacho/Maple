@@ -335,10 +335,48 @@ final class GitCoordinator {
     // MARK: - Push / Pull / Fetch
 
     func performPush() async {
+        guard let path = state.currentRepoPath else { return }
+
+        // If the branch already tracks an upstream, push straight away.
+        if await git.upstreamBranch(in: path) != nil {
+            await pushCurrentBranch()
+            return
+        }
+
+        // No upstream: pick a remote and ask the user to set one, rather than
+        // failing with a raw "has no upstream branch" error.
+        let remotes = await git.remotes(in: path)
+        guard let remote = remotes.contains("origin") ? "origin" : remotes.first else {
+            state.errorMessage = "No remote is configured. Add a remote before pushing."
+            return
+        }
+        let branch = (try? await git.currentBranch(in: path)) ?? ""
+        guard !branch.isEmpty, !branch.hasPrefix("(") else {
+            state.errorMessage = "Cannot set an upstream on a detached HEAD."
+            return
+        }
+        state.pendingUpstreamPush = AppState.PendingUpstreamPush(remote: remote, branch: branch)
+    }
+
+    private func pushCurrentBranch() async {
         var successOverride: String?
         await runOperation(refresh: .refresh) { path in
             let output = try await git.push(in: path)
             successOverride = output.isEmpty ? "Pushed successfully" : output
+        }
+        if let successOverride {
+            state.successMessage = successOverride
+        }
+    }
+
+    /// Pushes the current branch to `remote` and sets it as the upstream. Invoked
+    /// from the "set upstream and push" confirmation.
+    func pushSettingUpstream(remote: String, branch: String) async {
+        state.pendingUpstreamPush = nil
+        var successOverride: String?
+        await runOperation(refresh: .refresh) { path in
+            let output = try await git.push(remote: remote, branch: branch, setUpstream: true, in: path)
+            successOverride = output.isEmpty ? "Pushed and set upstream to \(remote)/\(branch)" : output
         }
         if let successOverride {
             state.successMessage = successOverride
@@ -380,8 +418,11 @@ final class GitCoordinator {
             try await git.createBranch(name: name, in: path)
         }
     }
+}
 
-    // MARK: - Merge / Rebase
+// MARK: - Merge, rebase and stash
+
+extension GitCoordinator {
 
     func performMerge(branch: String) async {
         guard !branch.isEmpty else { return }
