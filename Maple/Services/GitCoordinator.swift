@@ -168,9 +168,10 @@ final class GitCoordinator {
             async let branchTask = git.branches(in: path)
             async let currentBranchTask = git.currentBranch(in: path)
             async let stashTask = git.stashList(in: path)
+            async let tagTask = git.tags(in: path)
 
-            let (status, log, branchList, branch, stashList) = try await (
-                statusTask, logTask, branchTask, currentBranchTask, stashTask
+            let (status, log, branchList, branch, stashList, tagList) = try await (
+                statusTask, logTask, branchTask, currentBranchTask, stashTask, tagTask
             )
 
             // The selection can change while these awaits are in flight (fast
@@ -182,6 +183,7 @@ final class GitCoordinator {
             state.commits = log
             state.branches = branchList
             state.stashes = stashList
+            state.tags = tagList
             state.operationState = git.detectOperationState(in: path)
 
             if let index = state.repositories.firstIndex(where: { $0.path == path }) {
@@ -585,6 +587,21 @@ extension GitCoordinator {
     func performStashDrop(index: Int) async {
         await runLightOperation(refresh: .load) { path in
             try await git.stashDrop(index: index, in: path)
+        }
+    }
+
+    // MARK: - Tag operations
+
+    func createTag(name: String, message: String?) async {
+        guard !name.isEmpty else { return }
+        await runOperation(refresh: .load, success: "Tag '\(name)' created") { path in
+            try await git.createTag(name: name, message: message, in: path)
+        }
+    }
+
+    func deleteTag(_ tag: GitTag) async {
+        await runLightOperation(refresh: .load) { path in
+            try await git.deleteTag(name: tag.name, in: path)
         }
     }
 }

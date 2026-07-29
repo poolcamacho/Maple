@@ -90,6 +90,54 @@ struct StashSaveDialog: View {
     }
 }
 
+struct NewTagDialog: View {
+    @Bindable var state: AppState
+    @Environment(\.dismiss) private var dismiss
+    @State private var tagName = ""
+    @State private var message = ""
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("New Tag")
+                .font(.headline)
+
+            TextField("Tag name", text: $tagName)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 320)
+                .onSubmit { create() }
+
+            TextField("Message (optional, makes an annotated tag)", text: $message)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 320)
+
+            HStack(spacing: 12) {
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button("Create") {
+                    create()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(tagName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(24)
+    }
+
+    private func create() {
+        let name = tagName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        let msg = message.trimmingCharacters(in: .whitespaces)
+        dismiss()
+        Task {
+            try? await Task.sleep(for: .milliseconds(100))
+            await state.coordinator.createTag(name: name, message: msg.isEmpty ? nil : msg)
+        }
+    }
+}
+
 // MARK: - Merge
 
 struct MergeDialog: View {

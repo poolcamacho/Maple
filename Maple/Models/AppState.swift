@@ -21,6 +21,7 @@ final class AppState {
     var fileChanges: [GitFileChange] = []
     var branches: [GitBranch] = []
     var stashes: [GitStashEntry] = []
+    var tags: [GitTag] = []
     var currentDiffLines: [DiffLine] = []
     var currentDiffFile: DiffFile?
     /// Line-level selection keyed by hunk index. Values are the indices of
@@ -64,6 +65,7 @@ final class AppState {
         case history = "History"
         case branches = "Branches"
         case stashes = "Stashes"
+        case tags = "Tags"
     }
 
     @MainActor init() {
@@ -111,6 +113,14 @@ final class AppState {
         let query = searchQuery
         guard !query.isEmpty else { return stashes }
         return stashes.filter { $0.message.localizedStandardContains(query) }
+    }
+
+    var filteredTags: [GitTag] {
+        let query = searchQuery
+        guard !query.isEmpty else { return tags }
+        return tags.filter {
+            $0.name.localizedStandardContains(query) || $0.subject.localizedStandardContains(query)
+        }
     }
 
     // MARK: - Setup file watcher

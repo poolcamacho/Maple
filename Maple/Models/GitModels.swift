@@ -101,6 +101,22 @@ struct GitBranch: Identifiable, Hashable, Sendable {
     }
 }
 
+nonisolated struct GitTag: Identifiable, Hashable, Sendable {
+    let id: String
+    let name: String
+    let targetShortSHA: String
+    /// Annotation subject for annotated tags; the tagged commit's subject for
+    /// lightweight tags.
+    let subject: String
+
+    nonisolated init(name: String, targetShortSHA: String, subject: String) {
+        self.id = name
+        self.name = name
+        self.targetShortSHA = targetShortSHA
+        self.subject = subject
+    }
+}
+
 /// A contiguous run of diff lines under a single `@@ ... @@` hunk header.
 /// Carries the original header text so patches can be reconstructed without
 /// re-parsing line numbers into the same format git expects.

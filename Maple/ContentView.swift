@@ -161,6 +161,8 @@ struct DetailAreaView: View {
                             BranchesTabView(state: state, availableWidth: width)
                         case .stashes:
                             StashesTabView(state: state)
+                        case .tags:
+                            TagsTabView(state: state)
                         }
                     }
                 }

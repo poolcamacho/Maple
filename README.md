@@ -116,9 +116,10 @@ Utils/      FolderPicker, DateExtensions
 - [x] Signed and notarized `.dmg` releases via GitHub Actions
 - [x] Unit and integration test suite running in CI
 
+- [x] Tag management (create lightweight or annotated, list, delete)
+
 ### Next
 
-- [ ] Tag management (create, list, delete)
 - [ ] Clone from URL
 - [ ] Remote management (add, remove, configure)
 - [ ] Command palette for frequent operations
