@@ -109,6 +109,10 @@ Utils/      FolderPicker, DateExtensions
 - [x] `Cmd+S` stages / unstages the current selection
 - [x] Search filtering across changes, commits, branches, and stashes
 - [x] Confirmation prompts before destructive actions (delete branch, drop stash, abort)
+- [x] Set upstream on first push (prompts for `git push -u`)
+- [x] Actionable messages for common git failures (auth, network, no upstream, lock)
+- [x] Remembers open repositories and selection across launches
+- [x] `Cmd+Return` to commit
 - [x] Signed and notarized `.dmg` releases via GitHub Actions
 - [x] Unit and integration test suite running in CI
 
@@ -117,8 +121,7 @@ Utils/      FolderPicker, DateExtensions
 - [ ] Tag management (create, list, delete)
 - [ ] Clone from URL
 - [ ] Remote management (add, remove, configure)
-- [ ] Keyboard shortcuts (`Cmd+Enter` commit, command palette)
-- [ ] Persist open repositories between sessions
+- [ ] Command palette for frequent operations
 - [ ] Settings and preferences
 
 ## Contributing
