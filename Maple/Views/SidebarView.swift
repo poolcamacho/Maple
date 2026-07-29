@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SidebarView: View {
     @Bindable var state: AppState
+    @Binding var showClone: Bool
 
     var body: some View {
         List(selection: $state.selectedRepository) {
@@ -56,12 +57,23 @@ struct SidebarView: View {
         .listStyle(.sidebar)
         .toolbar {
             ToolbarItem {
-                Button(action: { openFolderPicker(state: state) }) {
+                Menu {
+                    Button {
+                        openFolderPicker(state: state)
+                    } label: {
+                        Label("Open Repository...", systemImage: "folder")
+                    }
+                    Button {
+                        showClone = true
+                    } label: {
+                        Label("Clone Repository...", systemImage: "square.and.arrow.down")
+                    }
+                } label: {
                     Image(systemName: "plus")
                 }
-                .help("Open Repository")
-                .accessibilityLabel("Open Repository")
-                .accessibilityIdentifier("sidebar.openRepository")
+                .help("Add Repository")
+                .accessibilityLabel("Add Repository")
+                .accessibilityIdentifier("sidebar.addRepository")
             }
 
             ToolbarItem {
@@ -108,6 +120,6 @@ struct SidebarRepoRow: View {
 }
 
 #Preview {
-    SidebarView(state: AppState())
+    SidebarView(state: AppState(), showClone: .constant(false))
         .frame(width: 250, height: 500)
 }

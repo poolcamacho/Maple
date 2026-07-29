@@ -6,6 +6,88 @@
 //
 
 import SwiftUI
+import AppKit
+
+struct CloneDialog: View {
+    @Bindable var state: AppState
+    @Environment(\.dismiss) private var dismiss
+    @State private var url = ""
+    @State private var destinationParent: URL?
+
+    private var trimmedURL: String { url.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var repoName: String { GitService.repositoryName(fromCloneURL: trimmedURL) }
+    private var canClone: Bool { !trimmedURL.isEmpty && destinationParent != nil }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Clone Repository")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Repository URL")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("https://github.com/user/repo.git", text: $url)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 420)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Destination")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Button("Choose Folder...") { pickFolder() }
+                    Text(destinationParent?.path ?? "No folder chosen")
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+
+            if let parent = destinationParent, !trimmedURL.isEmpty {
+                Text("Clones into \(parent.appendingPathComponent(repoName).path)")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Clone") { clone() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!canClone)
+            }
+        }
+        .padding(24)
+        .frame(width: 480)
+    }
+
+    private func pickFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.message = "Choose where to clone the repository"
+        panel.prompt = "Choose"
+        if panel.runModal() == .OK {
+            destinationParent = panel.url
+        }
+    }
+
+    private func clone() {
+        guard let parent = destinationParent else { return }
+        let cloneURL = trimmedURL
+        dismiss()
+        Task {
+            try? await Task.sleep(for: .milliseconds(100))
+            await state.coordinator.cloneRepository(url: cloneURL, into: parent.path)
+        }
+    }
+}
 
 struct NewBranchDialog: View {
     @Bindable var state: AppState

@@ -14,10 +14,11 @@ struct ContentView: View {
     @State private var showStashSave = false
     @State private var showMerge = false
     @State private var showRebase = false
+    @State private var showClone = false
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(state: state)
+            SidebarView(state: state, showClone: $showClone)
                 .navigationSplitViewColumnWidth(min: 160, ideal: 220, max: 300)
         } detail: {
             if state.selectedRepository != nil {
@@ -83,6 +84,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showRebase) {
             RebaseDialog(state: state)
+        }
+        .sheet(isPresented: $showClone) {
+            CloneDialog(state: state)
         }
     }
 }

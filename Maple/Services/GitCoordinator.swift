@@ -137,6 +137,26 @@ final class GitCoordinator {
         }
     }
 
+    // MARK: - Clone
+
+    /// Clones `url` into `parentDirectory`, then opens the cloned repo. Surfaces
+    /// classified errors (auth, network) on failure.
+    func cloneRepository(url: String, into parentDirectory: String) async {
+        state.operationInProgress = true
+        state.errorMessage = nil
+        state.successMessage = nil
+        defer { state.operationInProgress = false }
+
+        do {
+            let name = GitService.repositoryName(fromCloneURL: url)
+            let path = try await git.clone(url: url, into: parentDirectory, name: name)
+            await openRepository(at: path)
+            state.successMessage = "Cloned into \(name)"
+        } catch {
+            state.errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: - Repository selection
 
     /// Re-points the file watcher and loads data for the currently selected

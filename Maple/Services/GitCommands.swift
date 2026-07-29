@@ -81,4 +81,31 @@ extension GitService {
         let output = try await run(["fetch", remote], in: directory, timeout: Self.networkTimeout)
         return output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
+    // MARK: - Clone
+
+    private static let cloneTimeout: TimeInterval = 600
+
+    /// Clones `url` into `parentDirectory`/`name` and returns the resulting repo
+    /// path. `parentDirectory` must already exist.
+    func clone(url: String, into parentDirectory: String, name: String) async throws -> String {
+        let destination = (parentDirectory as NSString).appendingPathComponent(name)
+        _ = try await run(["clone", url, destination], in: parentDirectory, timeout: Self.cloneTimeout)
+        return destination
+    }
+
+    /// Derives a folder name from a clone URL, e.g.
+    /// `https://github.com/acme/repo.git` or `git@github.com:acme/repo.git` ->
+    /// `repo`. Falls back to "repository" if nothing usable is found.
+    nonisolated static func repositoryName(fromCloneURL url: String) -> String {
+        var trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        while trimmed.hasSuffix("/") { trimmed = String(trimmed.dropLast()) }
+        if trimmed.hasSuffix(".git") { trimmed = String(trimmed.dropLast(4)) }
+        while trimmed.hasSuffix("/") { trimmed = String(trimmed.dropLast()) }
+
+        if let separator = trimmed.lastIndex(where: { $0 == "/" || $0 == ":" }) {
+            trimmed = String(trimmed[trimmed.index(after: separator)...])
+        }
+        return trimmed.isEmpty ? "repository" : trimmed
+    }
 }

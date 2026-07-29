@@ -117,10 +117,10 @@ Utils/      FolderPicker, DateExtensions
 - [x] Unit and integration test suite running in CI
 
 - [x] Tag management (create lightweight or annotated, list, delete)
+- [x] Clone a repository from a URL
 
 ### Next
 
-- [ ] Clone from URL
 - [ ] Remote management (add, remove, configure)
 - [ ] Command palette for frequent operations
 - [ ] Settings and preferences
